@@ -1,0 +1,138 @@
+{
+  "project": "toreply.me",
+  "description": "Frontend + Backend do sistema comercial toreply.me (versão pública do Unarag)",
+  "stories": [
+    {
+      "id": "PRD-01",
+      "title": "Setup do Projeto",
+      "priority": "done",
+      "description": "Next.js + ShadCN + Tailwind + estrutura de pastas + contexts + tipos",
+      "acceptance": [
+        "npm run dev funciona sem erros",
+        "Todas as pastas e arquivos base criados",
+        "TypeScript sem erros"
+      ]
+    },
+    {
+      "id": "PRD-02",
+      "title": "Database Migrations",
+      "priority": "high",
+      "description": "Aplicar db-migrations.sql no PostgreSQL do projeto",
+      "acceptance": [
+        "ALTER TABLE users (google_id, is_master_admin, avatar_url)",
+        "ALTER TABLE tenants (archived, master, credits, conclusion_message)",
+        "ALTER TABLE tenants_users (role)",
+        "CREATE TABLE tenant_invite_tokens",
+        "CREATE TABLE payment_transactions",
+        "CREATE TABLE tenant_credit_ledger",
+        "CREATE TRIGGER trigger_deduct_credits",
+        "INSERT tenant master"
+      ]
+    },
+    {
+      "id": "PRD-03",
+      "title": "N8N APIs de Auth",
+      "priority": "high",
+      "description": "Criar todos os flows de autenticação no N8N",
+      "acceptance": [
+        "POST /auth/register cria user + tenant + retorna JWT",
+        "POST /auth/login verifica senha + retorna JWT 72h",
+        "POST /auth/logout invalida token",
+        "GET /auth/me retorna user + tenants",
+        "POST /auth/validate-token retorna user_id se válido"
+      ]
+    },
+    {
+      "id": "PRD-04",
+      "title": "Frontend Auth Pages",
+      "priority": "high",
+      "description": "Telas de login, registro e componentes de senha",
+      "acceptance": [
+        "Login com email/senha funciona",
+        "Registro com validação de senha em tempo real",
+        "PasswordStrength mostra checklist verde/vermelho",
+        "PasswordInput tem olhinho para mostrar/ocultar",
+        "Página de convite (/[token]) usa invite_token no register"
+      ]
+    },
+    {
+      "id": "PRD-05",
+      "title": "Verificação de Email",
+      "priority": "high",
+      "description": "Fluxo completo de verificação de email via Brevo",
+      "acceptance": [
+        "Email enviado ao registrar",
+        "Link /verify-email/[token] marca email como verificado",
+        "Banner amarelo aparece para emails não verificados",
+        "Botão reenviar funciona",
+        "Conta Brevo criada e domínio verificado"
+      ]
+    },
+    {
+      "id": "PRD-06",
+      "title": "Recuperação de Senha",
+      "priority": "high",
+      "description": "Fluxo de forgot/reset password",
+      "acceptance": [
+        "Email de reset enviado ao solicitar",
+        "Link /reset-password/[token] válido por 1h",
+        "Nova senha salva e usuário redirecionado ao login",
+        "Token marcado como usado após uso"
+      ]
+    },
+    {
+      "id": "PRD-07",
+      "title": "Multi-tenant",
+      "priority": "high",
+      "description": "Seleção e troca de tenant",
+      "acceptance": [
+        "Usuário com 1 tenant vai direto ao dashboard",
+        "Usuário com N tenants vê tela select-tenant",
+        "TenantSwitcher no menu troca tenant",
+        "selectedTenant persistido no localStorage"
+      ]
+    },
+    {
+      "id": "PRD-08",
+      "title": "Admin Master + Tenants + Convites",
+      "priority": "medium",
+      "description": "CRUD de tenants para admin master + geração de links de convite",
+      "acceptance": [
+        "Admin master vê menu Tenants",
+        "CRUD cria/edita/arquiva tenants",
+        "Não é possível deletar, apenas arquivar",
+        "Link de convite gerado com expiração de 7 dias",
+        "Convite vincula novo usuário ao tenant correto",
+        "Admins de tenant podem convidar para seu tenant"
+      ]
+    },
+    {
+      "id": "PRD-09",
+      "title": "Google OAuth",
+      "priority": "done",
+      "description": "Login social com Google",
+      "acceptance": [
+        "Botão Google na tela de login/registro",
+        "Projeto criado no Google Cloud Console",
+        "Callback via N8N cria/atualiza usuário",
+        "JWT retornado e usuário logado",
+        "Suporte a invite_token no fluxo Google"
+      ]
+    },
+    {
+      "id": "PRD-10",
+      "title": "Créditos + MercadoPago",
+      "priority": "done",
+      "description": "Sistema de créditos e pagamento via MercadoPago",
+      "acceptance": [
+        "Conta MercadoPago criada",
+        "API-Payments-Create cria preferência e retorna checkout URL",
+        "API-Payments-Webhook confirma pagamento e adiciona créditos",
+        "Trigger SQL deduz créditos automaticamente após ai_costs INSERT",
+        "CreditsBadge mostra saldo no header para admins",
+        "Página /credits mostra histórico completo",
+        "Badge 'Sem créditos' aparece quando saldo <= 0"
+      ]
+    }
+  ]
+}
