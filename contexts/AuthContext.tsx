@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('trm_token')
-    if (stored) {
+    if (stored && stored !== 'undefined' && stored !== 'null') {
       setToken(stored)
       refreshUser().finally(() => setLoading(false))
     } else {
@@ -33,10 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = (data: AuthResponse) => {
-    localStorage.setItem('trm_token', data.token)
-    setToken(data.token)
+    if (data.token) {
+      localStorage.setItem('trm_token', data.token)
+      setToken(data.token)
+    }
     setUser(data.user)
-    setTenants(data.tenants)
+    setTenants(data.tenants ?? [])
   }
 
   const logout = () => {
@@ -51,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await api.get<{ user: User; tenants: Tenant[] }>('/auth/me')
       setUser(data.user)
-      setTenants(data.tenants)
+      setTenants(data.tenants ?? [])
     } catch {
       logout()
     }

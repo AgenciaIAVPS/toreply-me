@@ -18,7 +18,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenantResolved, setTenantResolved] = useState(false)
 
   useEffect(() => {
-    if (tenants.length === 0) return
+    if (!tenants || tenants.length === 0) return
     const stored = localStorage.getItem('trm_tenant_id')
     if (stored) {
       const found = tenants.find(t => t.tenant_id === Number(stored))
