@@ -28,7 +28,7 @@ export function TenantSwitcher() {
             key={t.tenant_id}
             onClick={() => {
               setSelectedTenant(t)
-              router.refresh()
+              router.push('/dashboard')
             }}
             className="flex items-center justify-between"
           >

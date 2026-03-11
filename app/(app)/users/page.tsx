@@ -75,11 +75,9 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Usuários</h1>
-        {isAdmin && (
-          <Button onClick={generateInvite} size="sm">
-            <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
-          </Button>
-        )}
+        <Button onClick={generateInvite} size="sm">
+          <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
+        </Button>
       </div>
 
       {loading ? (

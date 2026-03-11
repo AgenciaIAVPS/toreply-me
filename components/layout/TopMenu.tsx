@@ -38,7 +38,7 @@ export function TopMenu() {
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
             </Link>
-            {isAdmin && (
+            {selectedTenant && (
               <Link href="/users" className="text-muted-foreground hover:text-foreground transition-colors">
                 Usuários
               </Link>
