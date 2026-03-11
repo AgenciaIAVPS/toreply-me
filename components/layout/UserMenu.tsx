@@ -66,6 +66,10 @@ export function UserMenu() {
             <div className="flex items-center gap-1 mt-1">
               <Building2 size={10} className="text-muted-foreground" />
               <p className="text-xs text-muted-foreground">{selectedTenant.tenant_name}</p>
+              <span className="text-xs text-muted-foreground">·</span>
+              <p className="text-xs text-muted-foreground">
+                {selectedTenant.tenant_user_role === 'admin' ? 'Admin' : 'Normal'}
+              </p>
             </div>
           )}
         </DropdownMenuLabel>

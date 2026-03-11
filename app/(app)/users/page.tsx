@@ -59,9 +59,11 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Usuários</h1>
-        <Button onClick={generateInvite} size="sm">
-          <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
-        </Button>
+        {isAdmin && (
+          <Button onClick={generateInvite} size="sm">
+            <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -89,9 +91,12 @@ export default function UsersPage() {
                     {!u.user_email_verified && (
                       <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">Email não verificado</Badge>
                     )}
-                    {isAdmin && u.user_id !== user?.user_id ? (
+                    <Badge variant={u.tenant_user_role === 'admin' ? 'default' : 'secondary'} className="text-xs">
+                      {u.tenant_user_role === 'admin' ? 'Admin' : 'Normal'}
+                    </Badge>
+                    {isAdmin && u.user_id !== user?.user_id && (
                       <Select value={u.tenant_user_role} onValueChange={v => changeRole(u.user_id, v)}>
-                        <SelectTrigger className="w-[120px] h-7 text-xs">
+                        <SelectTrigger className="w-[90px] h-6 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -99,10 +104,6 @@ export default function UsersPage() {
                           <SelectItem value="normal">Normal</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <Badge variant={u.tenant_user_role === 'admin' ? 'default' : 'secondary'} className="text-xs">
-                        {u.tenant_user_role === 'admin' ? 'Admin' : 'Normal'}
-                      </Badge>
                     )}
                   </div>
                 </div>
