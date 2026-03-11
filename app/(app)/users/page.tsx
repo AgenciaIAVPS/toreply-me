@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Link2, Mail } from 'lucide-react'
+import { UserPlus, Link2 } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -26,8 +26,6 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [emailInvite, setEmailInvite] = useState('')
-  const [sendingEmail, setSendingEmail] = useState(false)
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
 
@@ -54,20 +52,6 @@ export default function UsersPage() {
       setInviteOpen(true)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao gerar convite')
-    }
-  }
-
-  const sendEmailInvite = async () => {
-    if (!emailInvite || !inviteUrl) return
-    setSendingEmail(true)
-    try {
-      await api.post('/invites/send-email', { email: emailInvite, invite_url: inviteUrl })
-      toast.success(`Convite enviado para ${emailInvite}`)
-      setEmailInvite('')
-    } catch {
-      toast.error('Erro ao enviar email')
-    } finally {
-      setSendingEmail(false)
     }
   }
 
@@ -139,20 +123,6 @@ export default function UsersPage() {
                 <Input value={inviteUrl || ''} readOnly className="font-mono text-xs" />
                 <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(inviteUrl || ''); toast.success('Copiado!') }}>
                   Copiar
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2"><Mail size={14} />Enviar por email</p>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  value={emailInvite}
-                  onChange={e => setEmailInvite(e.target.value)}
-                />
-                <Button size="sm" onClick={sendEmailInvite} disabled={sendingEmail || !emailInvite}>
-                  {sendingEmail ? 'Enviando...' : 'Enviar'}
                 </Button>
               </div>
             </div>
