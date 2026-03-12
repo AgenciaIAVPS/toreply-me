@@ -16,7 +16,7 @@ export function CreditsBadge() {
   useEffect(() => {
     if (!selectedTenant) return
     api.get<{ tenant_credits: number }>('/credits/balance')
-      .then(r => setCredits(r.tenant_credits))
+      .then(r => setCredits(r?.tenant_credits ?? null))
       .catch(() => {})
   }, [selectedTenant])
 
@@ -34,7 +34,7 @@ export function CreditsBadge() {
           </Badge>
         ) : (
           <Badge variant="secondary" className="text-xs font-mono">
-            R$ {credits.toFixed(2)}
+            R$ {(credits ?? 0).toFixed(2)}
           </Badge>
         )}
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowAdd(true)} title="Adicionar créditos">
