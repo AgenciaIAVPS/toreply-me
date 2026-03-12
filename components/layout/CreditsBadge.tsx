@@ -15,7 +15,7 @@ export function CreditsBadge() {
 
   useEffect(() => {
     if (!selectedTenant) return
-    api.get<{ tenant_credits: number }>('/credits/balance')
+    api.get<{ tenant_credits: number }>(`/credits/balance?tenant_id=${selectedTenant.tenant_id}`)
       .then(r => setCredits(r?.tenant_credits ?? null))
       .catch(() => {})
   }, [selectedTenant])
