@@ -48,6 +48,11 @@ export function TopMenu() {
                 Tenants
               </Link>
             )}
+            {selectedTenant && (
+              <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
+                Configurações
+              </Link>
+            )}
           </nav>
 
           {/* Right side */}

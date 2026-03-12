@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Link2 } from 'lucide-react'
+import { UserPlus, Link2, UserMinus } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -42,6 +43,16 @@ export default function UsersPage() {
       toast.success('Permissão atualizada')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao atualizar permissão')
+    }
+  }
+
+  const removeUser = async (userId: number) => {
+    try {
+      await api.post('/users-remove', { user_id: userId, tenant_id: selectedTenant?.tenant_id })
+      setUsers(prev => prev.filter(u => u.user_id !== userId))
+      toast.success('Usuário removido do tenant')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao remover usuário')
     }
   }
 
@@ -104,6 +115,29 @@ export default function UsersPage() {
                           <SelectItem value="normal">Normal</SelectItem>
                         </SelectContent>
                       </Select>
+                    )}
+                    {isAdmin && u.user_id !== user?.user_id && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <UserMinus size={14} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover usuário</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Remover <strong>{u.user_name}</strong> do tenant? O usuário perderá o acesso até receber um novo convite.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeUser(u.user_id)} className="bg-destructive hover:bg-destructive/90">
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>
