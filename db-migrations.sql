@@ -13,6 +13,10 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS user_is_master_admin BOOLEAN DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS user_avatar_url TEXT;
 
+-- users: soft delete (arquivamento — preserva dados financeiros vinculados ao user_id)
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS user_archived_at TIMESTAMP NULL DEFAULT NULL;
+
 -- tenants: arquivamento, master flag, créditos, mensagem de encerramento
 ALTER TABLE tenants
   ADD COLUMN IF NOT EXISTS tenant_is_archived BOOLEAN DEFAULT FALSE,

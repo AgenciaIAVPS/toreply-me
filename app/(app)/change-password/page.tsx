@@ -6,8 +6,9 @@ import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/auth/PasswordInput'
+import { PasswordStrength, validatePassword } from '@/components/auth/PasswordStrength'
 
 export default function ChangePasswordPage() {
   const router = useRouter()
@@ -17,8 +18,8 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newPassword.length < 8) {
-      toast.error('A senha deve ter pelo menos 8 caracteres')
+    if (!validatePassword(newPassword)) {
+      toast.error('A senha não atende aos requisitos mínimos')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -46,22 +47,21 @@ export default function ChangePasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="new-password">Nova senha</Label>
-              <Input
+              <PasswordInput
                 id="new-password"
-                type="password"
                 placeholder="Mínimo 8 caracteres"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 required
               />
+              <PasswordStrength password={newPassword} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar nova senha</Label>
-              <Input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
                 placeholder="Repita a nova senha"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}

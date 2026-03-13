@@ -41,7 +41,7 @@ export default function SettingsPage() {
     if (!selectedTenant) return
     setSavingEmpresa(true)
     try {
-      await api.put('/tenants-update', {
+      await api.post('/tenants-update', {
         tenant_id: selectedTenant.tenant_id,
         name: tenantName,
         description: tenantDescription,
