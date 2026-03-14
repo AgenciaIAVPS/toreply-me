@@ -13,12 +13,17 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | null>(null)
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { tenants } = useAuth()
+  const { tenants, loading } = useAuth()
   const [selectedTenant, setSelectedTenantState] = useState<Tenant | null>(null)
   const [tenantResolved, setTenantResolved] = useState(false)
 
   useEffect(() => {
-    if (!tenants || tenants.length === 0) return
+    if (loading) return
+    setSelectedTenantState(null)
+    if (!tenants || tenants.length === 0) {
+      setTenantResolved(true)
+      return
+    }
     const stored = localStorage.getItem('trm_tenant_id')
     if (stored) {
       const found = tenants.find(t => t.tenant_id === Number(stored))
@@ -27,7 +32,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setSelectedTenantState(tenants[0])
     }
     setTenantResolved(true)
-  }, [tenants])
+  }, [tenants, loading])
 
   const setSelectedTenant = (tenant: Tenant) => {
     localStorage.setItem('trm_tenant_id', String(tenant.tenant_id))

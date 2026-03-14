@@ -30,7 +30,7 @@ export function CreditsBadge() {
         {isLow ? (
           <Badge variant="destructive" className="gap-1 text-xs">
             <AlertTriangle size={10} />
-            Sem créditos
+            Você está sem créditos, insira créditos
           </Badge>
         ) : (
           <Badge variant="secondary" className="text-xs font-mono">

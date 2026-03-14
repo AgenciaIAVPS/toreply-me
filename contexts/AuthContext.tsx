@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = (data: AuthResponse) => {
+    localStorage.removeItem('trm_tenant_id')
     if (data.token) {
       localStorage.setItem('trm_token', data.token)
       setToken(data.token)

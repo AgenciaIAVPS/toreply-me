@@ -131,3 +131,113 @@ ON CONFLICT (tenant_slug) DO NOTHING;
 -- UPDATE tenants_users SET tenant_user_role = 'admin'
 --   WHERE tenant_user_user_id = (SELECT user_id FROM users WHERE user_is_master_admin = TRUE)
 --   AND tenant_user_tenant_id = (SELECT tenant_id FROM tenants WHERE tenant_is_master = TRUE);
+
+-- ============================================================
+-- FASE 2 — Executar após Fase 1
+-- ============================================================
+
+-- --------------------------------------------------------
+-- 5. Novas colunas em tabelas existentes (Fase 2)
+-- --------------------------------------------------------
+
+-- tenants: logo, bloqueio, taxas de IA por tenant (NULL = usa global)
+ALTER TABLE tenants
+  ADD COLUMN IF NOT EXISTS tenant_logo_url TEXT,
+  ADD COLUMN IF NOT EXISTS tenant_is_blocked BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS tenant_ai_cost_multiplier NUMERIC(10,4) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS tenant_ai_fixed_fee NUMERIC(10,4) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS tenant_subscription_fee NUMERIC(10,2) DEFAULT NULL;
+
+-- payment_transactions: tipo (crédito vs mensalidade) e origem (online vs manual)
+ALTER TABLE payment_transactions
+  ADD COLUMN IF NOT EXISTS payment_type VARCHAR DEFAULT 'credit'
+    CHECK (payment_type IN ('credit','subscription')),
+  ADD COLUMN IF NOT EXISTS payment_origin VARCHAR DEFAULT 'online'
+    CHECK (payment_origin IN ('online','manual'));
+
+-- --------------------------------------------------------
+-- 6. Novas tabelas (Fase 2)
+-- --------------------------------------------------------
+
+-- Configurações globais do sistema (multiplicador IA padrão, taxa fixa, mensalidade padrão)
+CREATE TABLE IF NOT EXISTS system_settings (
+  setting_key        VARCHAR PRIMARY KEY,
+  setting_value      TEXT NOT NULL,
+  setting_updated_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO system_settings (setting_key, setting_value, setting_updated_at) VALUES
+  ('default_ai_multiplier',    '7.0',    NOW()),
+  ('default_ai_fixed_fee',     '0.05',   NOW()),
+  ('default_subscription_fee', '200.00', NOW())
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- Mensalidades por tenant
+CREATE TABLE IF NOT EXISTS tenant_subscriptions (
+  sub_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sub_tenant_id       INTEGER REFERENCES tenants(tenant_id),
+  sub_reference_month VARCHAR(7) NOT NULL,  -- formato: 'YYYY-MM'
+  sub_amount          NUMERIC(10,2) NOT NULL,
+  sub_status          VARCHAR DEFAULT 'pending'
+    CHECK (sub_status IN ('pending','paid')),
+  sub_payment_id      UUID REFERENCES payment_transactions(payment_id),
+  sub_origin          VARCHAR DEFAULT 'manual'
+    CHECK (sub_origin IN ('online','manual')),
+  sub_date_creation   TIMESTAMP DEFAULT NOW(),
+  sub_date_paid       TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON tenant_subscriptions(sub_tenant_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_month  ON tenant_subscriptions(sub_reference_month);
+
+-- --------------------------------------------------------
+-- 7. Trigger atualizado — taxas dinâmicas com fallback global
+-- Lê tenant_ai_cost_multiplier / tenant_ai_fixed_fee do tenant;
+-- usa system_settings como fallback se NULL.
+-- --------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION deduct_credits_on_ai_cost()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_global_mult  NUMERIC;
+  v_global_fixed NUMERIC;
+  v_mult         NUMERIC;
+  v_fixed        NUMERIC;
+  deduction      NUMERIC;
+BEGIN
+  SELECT setting_value::NUMERIC INTO v_global_mult
+    FROM system_settings WHERE setting_key = 'default_ai_multiplier';
+  SELECT setting_value::NUMERIC INTO v_global_fixed
+    FROM system_settings WHERE setting_key = 'default_ai_fixed_fee';
+
+  SELECT
+    COALESCE(tenant_ai_cost_multiplier, v_global_mult),
+    COALESCE(tenant_ai_fixed_fee, v_global_fixed)
+  INTO v_mult, v_fixed
+  FROM tenants WHERE tenant_id = NEW.ai_costs_tenant_id;
+
+  deduction := (NEW.ai_costs_estimated_cost * v_mult) + v_fixed;
+
+  UPDATE tenants
+    SET tenant_credits = tenant_credits - deduction
+    WHERE tenant_id = NEW.ai_costs_tenant_id;
+
+  INSERT INTO tenant_credit_ledger (
+    ledger_tenant_id, ledger_type, ledger_amount,
+    ledger_description, ledger_reference_id
+  ) VALUES (
+    NEW.ai_costs_tenant_id,
+    'deduction',
+    -deduction,
+    'AI cost: ' || NEW.ai_costs_resource,
+    NEW.ai_costs_id::VARCHAR
+  );
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_deduct_credits ON ai_costs;
+CREATE TRIGGER trigger_deduct_credits
+AFTER INSERT ON ai_costs
+FOR EACH ROW EXECUTE FUNCTION deduct_credits_on_ai_cost();

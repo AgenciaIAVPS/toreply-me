@@ -133,6 +133,208 @@
         "Página /credits mostra histórico completo",
         "Badge 'Sem créditos' aparece quando saldo <= 0"
       ]
+    },
+    {
+      "id": "PRD-11",
+      "title": "DB Migrations Fase 2",
+      "priority": "high",
+      "status": "pending",
+      "description": "Novas colunas e tabelas: tenant_logo_url, tenant_is_blocked, taxas por tenant (multiplier, fixed_fee, subscription_fee), payment_type/origin, system_settings global, tenant_subscriptions, trigger dinâmico que lê taxas por tenant com fallback para system_settings.",
+      "acceptance": [
+        "ALTER TABLE tenants: tenant_logo_url TEXT, tenant_is_blocked BOOLEAN, tenant_ai_cost_multiplier NUMERIC(10,4), tenant_ai_fixed_fee NUMERIC(10,4), tenant_subscription_fee NUMERIC(10,2)",
+        "ALTER TABLE payment_transactions: payment_type VARCHAR CHECK (credit|subscription), payment_origin VARCHAR CHECK (online|manual)",
+        "CREATE TABLE system_settings (setting_key PK, setting_value, setting_updated_at)",
+        "INSERT INTO system_settings: default_ai_multiplier=7.0, default_ai_fixed_fee=0.05, default_subscription_fee=200.00",
+        "CREATE TABLE tenant_subscriptions (sub_id UUID PK, sub_tenant_id, sub_reference_month YYYY-MM, sub_amount, sub_status pending|paid, sub_payment_id, sub_origin, sub_date_creation, sub_date_paid)",
+        "Trigger deduct_credits_on_ai_cost atualizado: lê tenant_ai_cost_multiplier/fixed_fee, usa system_settings como fallback, deduction = (cost * multiplier) + fixed_fee"
+      ]
+    },
+    {
+      "id": "PRD-12",
+      "title": "FIX: API-Auth-Validate-Token + API-Auth-Me com role",
+      "priority": "high",
+      "status": "pending",
+      "description": "Bug crítico: nó 'compute-hash' em API-Auth-Validate-Token usa require('crypto') que falha silenciosamente — toda validação de token está quebrada. Fix: substituir por nó nativo n8n-nodes-base.crypto SHA256. Também garantir que API-Auth-Me retorna tenant_user_role em cada tenant (necessário para CreditsBadge e permissões).",
+      "acceptance": [
+        "API-Auth-Validate-Token: nó compute-hash substituído por n8n-nodes-base.crypto v1 SHA256",
+        "Input do crypto node: $json.auth_token (token cru do header Authorization)",
+        "Output: campo token_hash usado no SQL de validação",
+        "Token válido por 72h (expires_at > NOW()) retorna dados do usuário",
+        "Token expirado retorna erro 401",
+        "API-Auth-Me: cada tenant no array retorna tenant_user_role ('admin' ou 'normal')"
+      ]
+    },
+    {
+      "id": "PRD-13",
+      "title": "FIX: Dashboard admin-only + CreditsBadge texto",
+      "priority": "high",
+      "status": "pending",
+      "description": "Bug: card de créditos no dashboard aparece para TODOS os usuários — deve ser apenas para admins. CreditsBadge quando saldo <= 0 deve mostrar texto de alerta. Também fix no frontend: adicionar isAdmin guard nos cards financeiros do dashboard.",
+      "acceptance": [
+        "Dashboard: card Créditos (e quaisquer dados financeiros) só renderiza se isAdmin === true",
+        "CreditsBadge: quando saldo <= 0, texto é 'Você está sem créditos, insira créditos'",
+        "CreditsBadge: quando saldo > 0, texto continua mostrando valor formatado em R$",
+        "Usuário normal logado NÃO vê dados de crédito no dashboard nem no header"
+      ]
+    },
+    {
+      "id": "PRD-14",
+      "title": "N8N: Bloqueio de tenant em API-instances-receptive",
+      "priority": "high",
+      "status": "pending",
+      "description": "Após buscar o tenant no flow API-instances-receptive (ID: l0lmXWSnNpGDKf9G), verificar se tenant_is_blocked=true. Se bloqueado: não processar mensagem, retornar 200 vazio (no-op silencioso). WhatsApp não deve receber resposta.",
+      "acceptance": [
+        "Após SELECT tenant, adicionar IF: se tenant_is_blocked=true → Respond 200 body vazio → fim do flow",
+        "Tenant não bloqueado: fluxo continua normalmente",
+        "Nó SQL usa operation: executeQuery com SQL raw",
+        "Quando bloqueado: Evolution API NÃO recebe chamada de envio de mensagem"
+      ]
+    },
+    {
+      "id": "PRD-15",
+      "title": "N8N: Atualizar API-Tenants-Update/Create + API-Tenants-List",
+      "priority": "high",
+      "status": "pending",
+      "description": "API-Tenants-Update (FRfDWQfFPAFsuzEa) e API-Tenants-Create (pHJqJVbak4khPfL1): adicionar tenant_logo_url ao SQL. API-Tenants-List: retornar tenant_is_blocked, tenant_logo_url, taxas; suportar query param filter=all|blocked|negative_credits|archived.",
+      "acceptance": [
+        "API-Tenants-Update: UPDATE inclui tenant_logo_url = '{{ $json.logo_url }}'",
+        "API-Tenants-Create: INSERT inclui tenant_logo_url",
+        "API-Tenants-List: retorna tenant_is_blocked, tenant_logo_url, tenant_ai_cost_multiplier, tenant_ai_fixed_fee, tenant_subscription_fee em cada tenant",
+        "API-Tenants-List: query param ?filter=all retorna todos ativos; ?filter=blocked retorna só bloqueados; ?filter=negative_credits retorna tenant_credits < 0; ?filter=archived retorna arquivados",
+        "Todos os nós SQL usam operation: executeQuery com SQL raw"
+      ]
+    },
+    {
+      "id": "PRD-16",
+      "title": "N8N: Novos flows — Block, Unarchive, Credits-Manual",
+      "priority": "medium",
+      "status": "pending",
+      "description": "Três novos flows N8N: API-Tenants-Block (bloquear/desbloquear tenant, requer master_admin), API-Tenants-Unarchive (desarquivar tenant, requer master_admin), API-Credits-Manual (inserir créditos manualmente via CTE: UPDATE credits + INSERT ledger + INSERT payment com origin=manual, requer master_admin).",
+      "acceptance": [
+        "API-Tenants-Block: POST /tenants-block, body {tenant_id, blocked: bool}, UPDATE tenants SET tenant_is_blocked, requer user_is_master_admin=true",
+        "API-Tenants-Unarchive: POST /tenants-unarchive, body {tenant_id}, UPDATE tenants SET tenant_is_archived=false, requer master_admin",
+        "API-Credits-Manual: POST /credits-manual, body {tenant_id, amount, description?}, CTE: UPDATE tenants SET tenant_credits = tenant_credits + amount; INSERT tenant_credit_ledger (deposit, manual); INSERT payment_transactions (origin=manual, type=credit), requer master_admin",
+        "Todos os nós SQL usam operation: executeQuery",
+        "Resposta 403 se não for master_admin"
+      ]
+    },
+    {
+      "id": "PRD-17",
+      "title": "N8N: Novos flows — Rates, Master-Settings, Subscriptions",
+      "priority": "medium",
+      "status": "pending",
+      "description": "Quatro novos flows: API-Tenants-Rates (configurar taxas de IA por tenant), API-Master-Settings (GET/POST system_settings globais), API-Subscriptions-List (listar mensalidades de um tenant), API-Subscriptions-Pay (registrar mensalidade paga manualmente).",
+      "acceptance": [
+        "API-Tenants-Rates: POST /tenants-rates, body {tenant_id, ai_multiplier?, ai_fixed_fee?, subscription_fee?}, UPDATE tenants SET campos correspondentes (NULL = usa global), requer master_admin",
+        "API-Master-Settings: GET /master-settings retorna todas as system_settings; POST /master-settings body {key, value} faz UPSERT, requer master_admin",
+        "API-Subscriptions-List: GET /subscriptions?tenant_id=X, retorna tenant_subscriptions ORDER BY reference_month DESC",
+        "API-Subscriptions-Pay: POST /subscriptions-pay, body {tenant_id, reference_month, amount, origin?}, UPSERT tenant_subscriptions com status=paid + INSERT payment_transactions, requer master_admin",
+        "Todos os nós SQL usam operation: executeQuery"
+      ]
+    },
+    {
+      "id": "PRD-18",
+      "title": "N8N: API-Master-Users + API-Tenants-Self-Create + API-Credits-Balance atualizado",
+      "priority": "medium",
+      "status": "pending",
+      "description": "API-Master-Users: listar e gerenciar usuários master. API-Tenants-Self-Create: qualquer usuário autenticado pode criar seu próprio tenant e é vinculado como admin. API-Credits-Balance (crM9LPJYPSJbUtL5): adicionar subscription history e AI costs por dia ao retorno.",
+      "acceptance": [
+        "API-Master-Users: GET /master-users retorna usuários com user_is_master_admin=true; POST /master-users body {user_id, is_master: bool} UPDATE users SET user_is_master_admin, requer master_admin",
+        "API-Tenants-Self-Create: POST /tenants-self-create, body {name, description?, slug, logo_url?}, INSERT tenant + INSERT tenants_users com role=admin para o user_id do token",
+        "API-Credits-Balance: retorno inclui subscription_history (tenant_subscriptions) e ai_costs_by_day (tenant_credit_ledger deductions agrupadas por dia nos últimos 30 dias)",
+        "Todos os nós SQL usam operation: executeQuery"
+      ]
+    },
+    {
+      "id": "PRD-19",
+      "title": "Frontend: types, validators, layout redirect, página /onboarding",
+      "priority": "high",
+      "status": "pending",
+      "description": "Atualizar lib/types.ts com novos campos de Tenant. Criar lib/validators.ts com isValidSlug e sanitizeSlug. Atualizar app/(app)/layout.tsx para redirecionar para /onboarding quando tenants.length === 0. Criar página /onboarding para usuários sem tenant.",
+      "acceptance": [
+        "lib/types.ts: interface Tenant inclui tenant_logo_url: string|null, tenant_is_blocked: boolean, tenant_ai_cost_multiplier: number|null, tenant_ai_fixed_fee: number|null, tenant_subscription_fee: number|null",
+        "lib/validators.ts: isValidSlug(slug) retorna true apenas se /^[a-z-]+$/.test(slug); sanitizeSlug(value) converte para lowercase e remove chars inválidos",
+        "app/(app)/layout.tsx: se tenants.length === 0 após auth carregar → redirect('/onboarding')",
+        "app/(app)/onboarding/page.tsx: formulário com campos nome*, descrição, slug* (máscara sanitizeSlug + validação isValidSlug), logo URL (opcional)",
+        "Onboarding: chama API-Tenants-Self-Create → refreshUser() → router.push('/dashboard')"
+      ]
+    },
+    {
+      "id": "PRD-20",
+      "title": "Frontend: Settings (logo + slug) + TopMenu (logo dinâmico + nav links) + CreditsBadge",
+      "priority": "high",
+      "status": "pending",
+      "description": "Settings: adicionar campo Logo URL + sanitizeSlug no onChange do slug + incluir logo_url no payload. TopMenu: logo esquerdo dinâmico (tenant logo ou slug como fallback). CreditsBadge: texto de alerta quando saldo <= 0. Nav links: adicionar Pagamentos (isAdmin) e Conf. Master + Usuários Master (isMaster).",
+      "acceptance": [
+        "settings/page.tsx: campo 'Logo (URL da imagem, 200×44px)' na aba Empresa",
+        "settings/page.tsx: slug onChange aplica sanitizeSlug, submit valida isValidSlug",
+        "settings/page.tsx: payload inclui logo_url",
+        "TopMenu: se selectedTenant?.tenant_logo_url → <Image src={url} width={200} height={44}>; senão com tenant → <span>{selectedTenant.tenant_slug}</span>; sem tenant → <span>toreply.me</span>",
+        "TopMenu: nav inclui link Pagamentos visível para isAdmin",
+        "TopMenu: nav inclui links Conf. Master e Usuários Master visíveis para isMaster",
+        "CreditsBadge: saldo <= 0 → texto 'Você está sem créditos, insira créditos'"
+      ]
+    },
+    {
+      "id": "PRD-21",
+      "title": "Frontend: Tenants page — refatoração completa",
+      "priority": "medium",
+      "status": "pending",
+      "description": "Refatoração completa de app/(app)/tenants/page.tsx: tabs Ativos|Arquivados, filtros (Todos|Bloqueados|Crédito negativo), cards com saldo e badges, novos botões (Bloquear/Desbloquear, Inserir Crédito, Definir Taxas, Mensalidades), dialogs para cada ação, form com logo URL + sanitizeSlug.",
+      "acceptance": [
+        "Tabs: Ativos e Arquivados",
+        "Filtros na aba Ativos: Todos, Bloqueados, Crédito negativo",
+        "Cards mostram saldo atual, badge Bloqueado (vermelho) e badge Crédito negativo (amarelo)",
+        "Botão Bloquear/Desbloquear chama API-Tenants-Block",
+        "Dialog Inserir Crédito: campo valor → API-Credits-Manual",
+        "Dialog Definir Taxas: multiplier IA, taxa fixa IA, mensalidade por tenant (vazio = usa global)",
+        "Dialog Mensalidades: lista tenant_subscriptions + botão 'Registrar pago (manual)' → API-Subscriptions-Pay",
+        "Form criar/editar: campo Logo URL + slug com sanitizeSlug + validação isValidSlug",
+        "Aba Arquivados: botão Desarquivar chama API-Tenants-Unarchive"
+      ]
+    },
+    {
+      "id": "PRD-22",
+      "title": "Frontend: Página /payments — histórico financeiro",
+      "priority": "medium",
+      "status": "pending",
+      "description": "Nova página app/(app)/payments/page.tsx acessível apenas para admins. Exibe três seções: mensalidades (por mês, valor, status, origem), créditos adicionados (ledger deposits com origem online/manual), custos de IA por dia (ledger deductions agrupadas). Chama API-Credits-Balance.",
+      "acceptance": [
+        "Página /payments visível apenas para isAdmin",
+        "Seção Mensalidades: lista meses com valor, status (pendente/pago), origem ('Pago online' ou 'Inserido manualmente')",
+        "Seção Créditos Adicionados: lista deposits do ledger com data, valor, origem",
+        "Seção Custos de IA por Dia: gráfico ou tabela com deduções agrupadas por dia (últimos 30 dias)",
+        "Link Pagamentos no nav (TopMenu) redireciona para /payments"
+      ]
+    },
+    {
+      "id": "PRD-23",
+      "title": "Frontend: /master-settings e /master-users",
+      "priority": "low",
+      "status": "pending",
+      "description": "Duas novas páginas acessíveis apenas para isMaster. /master-settings: formulário que lê e salva system_settings (multiplicador IA padrão, taxa fixa IA padrão, mensalidade padrão). /master-users: lista usuários master com botão promover/revogar.",
+      "acceptance": [
+        "app/(app)/master-settings/page.tsx: visível apenas para isMaster",
+        "master-settings: campos para default_ai_multiplier, default_ai_fixed_fee, default_subscription_fee",
+        "master-settings: GET /master-settings carrega valores atuais; POST salva",
+        "app/(app)/master-users/page.tsx: visível apenas para isMaster",
+        "master-users: lista usuários com user_is_master_admin=true",
+        "master-users: botão Promover/Revogar chama API-Master-Users"
+      ]
+    },
+    {
+      "id": "PRD-24",
+      "title": "Atualizar db-migrations.sql com Fase 2",
+      "priority": "low",
+      "status": "pending",
+      "description": "Adicionar ao arquivo toreply-me/db-migrations.sql todas as migrations da Fase 2 (PRD-11): ALTER tenants, ALTER payment_transactions, CREATE system_settings, CREATE tenant_subscriptions, trigger dinâmico. O arquivo serve como referência para Paulo executar manualmente no banco.",
+      "acceptance": [
+        "db-migrations.sql inclui ALTER TABLE tenants (logo_url, is_blocked, ai_cost_multiplier, ai_fixed_fee, subscription_fee)",
+        "db-migrations.sql inclui ALTER TABLE payment_transactions (payment_type, payment_origin)",
+        "db-migrations.sql inclui CREATE TABLE IF NOT EXISTS system_settings com INSERTs dos valores default",
+        "db-migrations.sql inclui CREATE TABLE IF NOT EXISTS tenant_subscriptions com índices",
+        "db-migrations.sql inclui função deduct_credits_on_ai_cost atualizada (taxas dinâmicas com fallback system_settings) e recriação do trigger"
+      ]
     }
   ]
 }

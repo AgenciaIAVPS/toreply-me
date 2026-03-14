@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/contexts/TenantContext'
 import { api } from '@/lib/api'
+import { isValidSlug, sanitizeSlug } from '@/lib/validators'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +23,8 @@ export default function SettingsPage() {
   const [tenantName, setTenantName] = useState('')
   const [tenantDescription, setTenantDescription] = useState('')
   const [tenantSlug, setTenantSlug] = useState('')
+  const [tenantLogoUrl, setTenantLogoUrl] = useState('')
+  const [slugError, setSlugError] = useState('')
   const [savingEmpresa, setSavingEmpresa] = useState(false)
 
   // Conta delete state
@@ -33,12 +36,18 @@ export default function SettingsPage() {
       setTenantName(selectedTenant.tenant_name)
       setTenantDescription(selectedTenant.tenant_description || '')
       setTenantSlug(selectedTenant.tenant_slug)
+      setTenantLogoUrl(selectedTenant.tenant_logo_url || '')
     }
   }, [selectedTenant])
 
   const saveEmpresa = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedTenant) return
+    setSlugError('')
+    if (!isValidSlug(tenantSlug)) {
+      setSlugError('Slug deve conter apenas letras minúsculas e hífens')
+      return
+    }
     setSavingEmpresa(true)
     try {
       await api.post('/tenants-update', {
@@ -46,6 +55,7 @@ export default function SettingsPage() {
         name: tenantName,
         description: tenantDescription,
         slug: tenantSlug,
+        logo_url: tenantLogoUrl || null,
       })
       toast.success('Empresa atualizada!')
       await refreshUser()
@@ -112,12 +122,27 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tenant-slug">Slug</Label>
+                    <Label htmlFor="tenant-slug">
+                      Slug <span className="text-xs text-muted-foreground">(letras minúsculas e hífens)</span>
+                    </Label>
                     <Input
                       id="tenant-slug"
                       value={tenantSlug}
-                      onChange={e => setTenantSlug(e.target.value)}
+                      onChange={e => { setTenantSlug(sanitizeSlug(e.target.value)); setSlugError('') }}
                       required
+                    />
+                    {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant-logo">
+                      Logo <span className="text-xs text-muted-foreground">(URL da imagem, 200×44px)</span>
+                    </Label>
+                    <Input
+                      id="tenant-logo"
+                      type="url"
+                      value={tenantLogoUrl}
+                      onChange={e => setTenantLogoUrl(e.target.value)}
+                      placeholder="https://..."
                     />
                   </div>
                   <Button type="submit" disabled={savingEmpresa}>

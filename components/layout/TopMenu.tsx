@@ -22,15 +22,18 @@ export function TopMenu() {
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="toreply.me"
-              width={120}
-              height={36}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
+            {selectedTenant?.tenant_logo_url ? (
+              <Image
+                src={selectedTenant.tenant_logo_url}
+                alt={selectedTenant.tenant_name}
+                width={200}
+                height={44}
+                className="object-contain max-h-8"
+                unoptimized
+              />
+            ) : (
+              <span className="font-semibold text-sm">toreply.me</span>
+            )}
           </Link>
 
           {/* Nav */}
@@ -48,9 +51,24 @@ export function TopMenu() {
                 Tenants
               </Link>
             )}
+            {isAdmin && (
+              <Link href="/payments" className="text-muted-foreground hover:text-foreground transition-colors">
+                Pagamentos
+              </Link>
+            )}
             {selectedTenant && (
               <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
                 Configurações
+              </Link>
+            )}
+            {isMaster && (
+              <Link href="/master-settings" className="text-muted-foreground hover:text-foreground transition-colors">
+                Conf. Master
+              </Link>
+            )}
+            {isMaster && (
+              <Link href="/master-users" className="text-muted-foreground hover:text-foreground transition-colors">
+                Usuários Master
               </Link>
             )}
           </nav>

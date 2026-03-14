@@ -20,12 +20,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return
     }
     if (!tenantResolved) return
+    if (tenants.length === 0 && pathname !== '/onboarding') {
+      router.push('/onboarding')
+      return
+    }
     if (!selectedTenant && tenants.length > 1 && pathname !== '/select-tenant') {
       router.push('/select-tenant')
     }
   }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router])
 
-  if (loading) {
+  if (loading || !tenantResolved) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
