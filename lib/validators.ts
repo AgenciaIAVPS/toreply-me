@@ -1,7 +1,7 @@
 export function isValidSlug(slug: string): boolean {
-  return /^[a-z][a-z-]*[a-z]$/.test(slug) || /^[a-z]$/.test(slug)
+  return /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug) || /^[a-z0-9]$/.test(slug)
 }
 
 export function sanitizeSlug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z-]/g, '')
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, '')
 }

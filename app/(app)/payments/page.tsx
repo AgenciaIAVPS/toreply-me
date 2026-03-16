@@ -10,6 +10,14 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Loader2 } from 'lucide-react'
 
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr && dateStr.length === 10) {
+    const [y, m, d] = dateStr.split('-')
+    return new Date(Number(y), Number(m) - 1, Number(d))
+  }
+  return new Date(dateStr)
+}
+
 export default function PaymentsPage() {
   const { selectedTenant } = useTenant()
   const router = useRouter()
@@ -143,7 +151,7 @@ export default function PaymentsPage() {
                   <tbody>
                     {data.ledger.filter(l => l.type === 'deposit').map(l => (
                       <tr key={l.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2 text-muted-foreground">{new Date(l.date).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{parseLocalDate(l.date).toLocaleDateString('pt-BR')}</td>
                         <td className="px-4 py-2 text-green-600 font-medium">+ R$ {l.amount.toFixed(2)}</td>
                         <td className="px-4 py-2">{l.description || '—'}</td>
                       </tr>
@@ -173,7 +181,7 @@ export default function PaymentsPage() {
                   <tbody>
                     {data.ai_costs.map(c => (
                       <tr key={c.date} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2 font-mono">{new Date(c.date).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-4 py-2 font-mono">{parseLocalDate(c.date).toLocaleDateString('pt-BR')}</td>
                         <td className="px-4 py-2 text-orange-600">R$ {c.total_deduction.toFixed(4)}</td>
                         <td className="px-4 py-2 text-muted-foreground">{c.count}</td>
                       </tr>

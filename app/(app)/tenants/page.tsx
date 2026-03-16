@@ -87,7 +87,7 @@ export default function TenantsPage() {
   // Filter active list
   const filteredActive = activeList.filter(t => {
     if (filter === 'blocked') return t.tenant_is_blocked
-    if (filter === 'negative_credits') return t.tenant_credits < 0
+    if (filter === 'negative_credits') return Number(t.tenant_credits ?? 0) < 0
     return true
   })
 
@@ -100,7 +100,8 @@ export default function TenantsPage() {
 
   const openEdit = (t: Tenant) => {
     setEditTarget(t)
-    setForm({ name: t.tenant_name, description: t.tenant_description || '', slug: t.tenant_slug, logo_url: t.tenant_logo_url || '' })
+    const logo = t.tenant_logo_url
+    setForm({ name: t.tenant_name, description: t.tenant_description || '', slug: t.tenant_slug, logo_url: (logo && logo !== 'null') ? logo : '' })
     setSlugError('')
     setDialogOpen(true)
   }
@@ -108,7 +109,7 @@ export default function TenantsPage() {
   const save = async () => {
     setSlugError('')
     if (!isValidSlug(form.slug)) {
-      setSlugError('Slug deve conter apenas letras minúsculas e hífens')
+      setSlugError('Slug deve conter apenas letras minúsculas, números e hífens')
       return
     }
     try {
@@ -265,10 +266,10 @@ export default function TenantsPage() {
               {t.tenant_name}
               {t.tenant_is_master && <Badge variant="secondary" className="text-xs">Master</Badge>}
               {t.tenant_is_blocked && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
-              {t.tenant_credits < 0 && <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Crédito negativo</Badge>}
+              {Number(t.tenant_credits ?? 0) < 0 && <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Crédito negativo</Badge>}
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{t.tenant_slug}</p>
-            <p className="text-xs text-muted-foreground">Saldo: <span className={t.tenant_credits < 0 ? 'text-destructive font-medium' : ''}>R$ {t.tenant_credits.toFixed(2)}</span></p>
+            <p className="text-xs text-muted-foreground">Saldo: <span className={Number(t.tenant_credits ?? 0) < 0 ? 'text-destructive font-medium' : ''}>R$ {Number(t.tenant_credits ?? 0).toFixed(2)}</span></p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {!archived ? (
@@ -347,7 +348,7 @@ export default function TenantsPage() {
               <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label>Slug <span className="text-xs text-muted-foreground">(letras minúsculas e hífens)</span></Label>
+              <Label>Slug <span className="text-xs text-muted-foreground">(letras minúsculas, números e hífens)</span></Label>
               <Input value={form.slug} onChange={e => { setForm(f => ({ ...f, slug: sanitizeSlug(e.target.value) })); setSlugError('') }} />
               {slugError && <p className="text-xs text-destructive">{slugError}</p>}
             </div>

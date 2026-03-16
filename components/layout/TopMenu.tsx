@@ -22,7 +22,7 @@ export function TopMenu() {
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2">
-            {selectedTenant?.tenant_logo_url ? (
+            {selectedTenant?.tenant_logo_url && selectedTenant.tenant_logo_url !== 'null' ? (
               <Image
                 src={selectedTenant.tenant_logo_url}
                 alt={selectedTenant.tenant_name}
@@ -59,11 +59,6 @@ export function TopMenu() {
             {selectedTenant && (
               <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
                 Configurações
-              </Link>
-            )}
-            {isMaster && (
-              <Link href="/master-settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                Conf. Master
               </Link>
             )}
             {isMaster && (

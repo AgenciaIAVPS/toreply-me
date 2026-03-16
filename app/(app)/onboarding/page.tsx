@@ -40,7 +40,7 @@ export default function OnboardingPage() {
       return
     }
     if (!isValidSlug(slug)) {
-      setError('Identificador deve conter apenas letras minúsculas e hífens')
+      setError('Identificador deve conter apenas letras minúsculas, números e hífens')
       return
     }
 
@@ -87,7 +87,7 @@ export default function OnboardingPage() {
             <div className="space-y-1.5">
               <Label htmlFor="slug">
                 Identificador *{' '}
-                <span className="text-xs text-muted-foreground">(apenas letras minúsculas e hífens)</span>
+                <span className="text-xs text-muted-foreground">(letras minúsculas, números e hífens)</span>
               </Label>
               <Input
                 id="slug"

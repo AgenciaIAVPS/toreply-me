@@ -15,9 +15,10 @@ import { Label } from '@/components/ui/label'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { logout, refreshUser } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
   const { selectedTenant } = useTenant()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
 
   // Empresa form state
   const [tenantName, setTenantName] = useState('')
@@ -26,6 +27,16 @@ export default function SettingsPage() {
   const [tenantLogoUrl, setTenantLogoUrl] = useState('')
   const [slugError, setSlugError] = useState('')
   const [savingEmpresa, setSavingEmpresa] = useState(false)
+
+  // Master settings state
+  const [masterSettings, setMasterSettings] = useState<Record<string, string>>({})
+  const [savingMaster, setSavingMaster] = useState(false)
+
+  const MASTER_SETTINGS = [
+    { key: 'default_ai_multiplier', label: 'Multiplicador de custo IA (padrão)', placeholder: '7.0' },
+    { key: 'default_ai_fixed_fee', label: 'Taxa fixa de IA em R$ (padrão)', placeholder: '0.05' },
+    { key: 'default_subscription_fee', label: 'Mensalidade padrão em R$', placeholder: '200.00' },
+  ]
 
   // Conta delete state
   const [confirmText, setConfirmText] = useState('')
@@ -36,16 +47,40 @@ export default function SettingsPage() {
       setTenantName(selectedTenant.tenant_name)
       setTenantDescription(selectedTenant.tenant_description || '')
       setTenantSlug(selectedTenant.tenant_slug)
-      setTenantLogoUrl(selectedTenant.tenant_logo_url || '')
+      const logo = selectedTenant.tenant_logo_url
+      setTenantLogoUrl((logo && logo !== 'null') ? logo : '')
     }
   }, [selectedTenant])
+
+  useEffect(() => {
+    if (!isMaster) return
+    api.get<{ settings: { setting_key: string; setting_value: string }[] }>('/master-settings')
+      .then(r => {
+        const map: Record<string, string> = {}
+        r.settings?.forEach(s => { map[s.setting_key] = s.setting_value })
+        setMasterSettings(map)
+      })
+      .catch(() => {})
+  }, [isMaster])
+
+  const saveMasterSetting = async (key: string, value: string) => {
+    setSavingMaster(true)
+    try {
+      await api.post('/master-settings', { key, value })
+      toast.success('Configuração salva')
+    } catch {
+      toast.error('Erro ao salvar')
+    } finally {
+      setSavingMaster(false)
+    }
+  }
 
   const saveEmpresa = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedTenant) return
     setSlugError('')
     if (!isValidSlug(tenantSlug)) {
-      setSlugError('Slug deve conter apenas letras minúsculas e hífens')
+      setSlugError('Slug deve conter apenas letras minúsculas, números e hífens')
       return
     }
     setSavingEmpresa(true)
@@ -86,6 +121,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
           <TabsTrigger value="conta">Conta</TabsTrigger>
+          {isMaster && <TabsTrigger value="master">Master</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="empresa" className="mt-4">
@@ -123,7 +159,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tenant-slug">
-                      Slug <span className="text-xs text-muted-foreground">(letras minúsculas e hífens)</span>
+                      Slug <span className="text-xs text-muted-foreground">(letras minúsculas, números e hífens)</span>
                     </Label>
                     <Input
                       id="tenant-slug"
@@ -182,6 +218,42 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isMaster && (
+          <TabsContent value="master" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações globais de IA</CardTitle>
+                <CardDescription>Valores padrão usados quando um tenant não tem taxas específicas configuradas.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {MASTER_SETTINGS.map(({ key, label, placeholder }) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label>{label}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={masterSettings[key] ?? ''}
+                        onChange={e => setMasterSettings(s => ({ ...s, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={savingMaster}
+                        onClick={() => saveMasterSetting(key, masterSettings[key] ?? '')}
+                      >
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
