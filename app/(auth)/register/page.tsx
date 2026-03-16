@@ -22,7 +22,7 @@ const schema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().refine(validatePassword, 'Senha não atende aos requisitos'),
   confirmPassword: z.string(),
-  tosAccepted: z.literal(true, { errorMap: () => ({ message: 'Você deve aceitar os termos de uso' }) }),
+  tosAccepted: z.literal(true, { message: 'Você deve aceitar os termos de uso' }),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'As senhas não coincidem',
   path: ['confirmPassword'],
