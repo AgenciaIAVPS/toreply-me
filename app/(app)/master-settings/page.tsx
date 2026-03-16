@@ -64,37 +64,68 @@ export default function MasterSettingsPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
         </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Configurações globais de IA</CardTitle>
-            <CardDescription>Valores padrão usados quando um tenant não tem taxas específicas configuradas.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {SETTINGS.map(({ key, label, placeholder }) => (
-              <div key={key} className="space-y-1.5">
-                <Label>{label}</Label>
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações globais de IA</CardTitle>
+              <CardDescription>Valores padrão usados quando um tenant não tem taxas específicas configuradas.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {SETTINGS.map(({ key, label, placeholder }) => (
+                <div key={key} className="space-y-1.5">
+                  <Label>{label}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={settings[key] ?? ''}
+                      onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => saveSetting(key, settings[key] ?? '')}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sistema</CardTitle>
+              <CardDescription>Configurações gerais exibidas no frontend para todos os usuários.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Link dos termos de uso</Label>
+                <p className="text-xs text-muted-foreground">URL exibida no checkbox de cadastro de novos usuários</p>
                 <div className="flex gap-2">
                   <Input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={settings[key] ?? ''}
-                    onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
-                    placeholder={placeholder}
+                    type="url"
+                    value={settings['tos_url'] ?? ''}
+                    onChange={e => setSettings(s => ({ ...s, tos_url: e.target.value }))}
+                    placeholder="https://..."
                   />
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={saving}
-                    onClick={() => saveSetting(key, settings[key] ?? '')}
+                    onClick={() => saveSetting('tos_url', settings['tos_url'] ?? '')}
                   >
                     Salvar
                   </Button>
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   )
