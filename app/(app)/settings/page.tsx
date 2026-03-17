@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 export default function SettingsPage() {
   const router = useRouter()
   const { user, logout, refreshUser } = useAuth()
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
 
@@ -125,7 +125,25 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="empresa" className="mt-4">
-          {!isAdmin ? (
+          {/* RF-011: sub-tenant vê dados do pai em modo read-only, sem slug/logo */}
+          {isSubTenant && selectedParent ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados da empresa</CardTitle>
+                <CardDescription>Informações do seu parceiro responsável.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input value={selectedParent.rel_parent_tenant_name} disabled readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input value={selectedParent.rel_description ?? ''} disabled readOnly placeholder="—" />
+                </div>
+              </CardContent>
+            </Card>
+          ) : !isAdmin ? (
             <Card>
               <CardContent className="py-6">
                 <p className="text-sm text-muted-foreground">Apenas administradores podem editar as configurações da empresa.</p>

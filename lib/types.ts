@@ -8,6 +8,21 @@ export interface User {
   user_status: string
 }
 
+export interface TenantRelationship {
+  rel_id: string
+  rel_parent_tenant_id: number
+  rel_parent_tenant_name: string
+  rel_parent_tenant_logo_url: string | null
+  rel_name: string | null              // nome que o pai deu ao filho
+  rel_description: string | null       // descrição que o pai deu ao filho
+  rel_external_id: string | null
+  rel_is_blocked: boolean
+  rel_credits: number
+  rel_ai_cost_multiplier: number | null
+  rel_ai_fixed_fee: number | null
+  rel_subscription_fee: number | null
+}
+
 export interface Tenant {
   tenant_id: number
   tenant_name: string
@@ -23,6 +38,8 @@ export interface Tenant {
   tenant_ai_fixed_fee: number | null
   tenant_subscription_fee: number | null
   tenant_sub_paid_current_month: boolean
+  tenant_parents: TenantRelationship[]  // relações onde este é filho
+  tenant_is_parent: boolean             // true se for pai de algum tenant
 }
 
 export interface AuthResponse {
@@ -81,6 +98,23 @@ export interface CreditBalance {
   ledger: LedgerEntry[]
   subscriptions: SubscriptionEntry[]
   ai_costs: AiCostByDay[]
+}
+
+export interface RelChildSummary {
+  rel_id: string
+  rel_name: string | null
+  rel_description: string | null
+  rel_external_id: string | null
+  rel_is_blocked: boolean
+  rel_credits: number
+  rel_ai_cost_multiplier: number | null
+  rel_ai_fixed_fee: number | null
+  rel_subscription_fee: number | null
+  child_tenant_id: number
+  child_tenant_name: string
+  child_tenant_logo_url: string | null
+  credits_status: 'positive' | 'negative'
+  subscription_status: 'paid' | 'overdue' | 'none'
 }
 
 export interface SystemSetting {

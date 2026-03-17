@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, tenants, loading } = useAuth()
-  const { selectedTenant, tenantResolved } = useTenant()
+  const { selectedTenant, tenantResolved, selectedParent, parentResolved, isSubTenant } = useTenant()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -26,10 +26,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     if (!selectedTenant && tenants.length > 1 && pathname !== '/select-tenant') {
       router.push('/select-tenant')
+      return
     }
-  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router])
+    if (!parentResolved) return
+    // If tenant has 2+ parents and none is selected, redirect to select-parent
+    if (
+      selectedTenant &&
+      isSubTenant &&
+      selectedTenant.tenant_parents.length > 1 &&
+      !selectedParent &&
+      pathname !== '/select-parent'
+    ) {
+      router.push('/select-parent')
+    }
+  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router, parentResolved, selectedParent, isSubTenant])
 
-  if (loading || !tenantResolved) {
+  if (loading || !tenantResolved || !parentResolved) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

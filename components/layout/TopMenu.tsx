@@ -13,16 +13,27 @@ import { Menu, X } from 'lucide-react'
 
 export function TopMenu() {
   const { user, tenants } = useAuth()
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
+  const isParent = selectedTenant?.tenant_is_parent
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Visual identity: sub-tenant sees parent's branding (RF-050/051/052/053)
+  const displayName = isSubTenant && selectedParent
+    ? selectedParent.rel_parent_tenant_name
+    : selectedTenant?.tenant_name ?? 'toreply.me'
+
+  const displayLogo = isSubTenant && selectedParent
+    ? selectedParent.rel_parent_tenant_logo_url
+    : selectedTenant?.tenant_logo_url
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', show: true },
-    { href: '/users', label: 'Usuários', show: !!selectedTenant },
-    { href: '/tenants', label: 'Tenants', show: !!isMaster },
+    { href: '/users', label: 'Usuários', show: !!selectedTenant && !isSubTenant || !!selectedTenant && !!isAdmin },
+    { href: '/clients', label: 'Clientes', show: !isSubTenant && !!(isParent || isMaster) },
     { href: '/payments', label: 'Pagamentos', show: !!isAdmin },
+    { href: '/tenants', label: 'Tenants', show: !!isMaster },
     { href: '/settings', label: 'Configurações', show: !!selectedTenant },
   ]
 
@@ -31,19 +42,19 @@ export function TopMenu() {
       {user && !user.user_email_verified && <EmailBanner />}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          {/* Logo */}
+          {/* Logo / Brand */}
           <Link href="/dashboard" className="flex items-center gap-2">
-            {selectedTenant?.tenant_logo_url && selectedTenant.tenant_logo_url !== 'null' ? (
+            {displayLogo && displayLogo !== 'null' ? (
               <Image
-                src={selectedTenant.tenant_logo_url}
-                alt={selectedTenant.tenant_name}
+                src={displayLogo}
+                alt={displayName}
                 width={200}
                 height={44}
                 className="object-contain max-h-8"
                 unoptimized
               />
             ) : (
-              <span className="font-semibold text-sm">toreply.me</span>
+              <span className="font-semibold text-sm">{displayName}</span>
             )}
           </Link>
 

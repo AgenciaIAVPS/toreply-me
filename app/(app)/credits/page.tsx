@@ -26,17 +26,20 @@ interface BalanceData {
 }
 
 export default function CreditsPage() {
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const [data, setData] = useState<BalanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
 
   const load = () => {
+    if (!selectedTenant) return
     setLoading(true)
-    api.get<BalanceData>('/credits/balance').then(setData).catch(() => toast.error('Erro ao carregar saldo')).finally(() => setLoading(false))
+    // RF-013: sub-tenant passa rel_id para obter saldo isolado da relação pai-filho
+    const relParam = isSubTenant && selectedParent ? `?rel_id=${selectedParent.rel_id}` : ''
+    api.get<BalanceData>(`/credits/balance${relParam}`).then(setData).catch(() => toast.error('Erro ao carregar saldo')).finally(() => setLoading(false))
   }
 
-  useEffect(() => { if (selectedTenant) load() }, [selectedTenant])
+  useEffect(() => { if (selectedTenant) load() }, [selectedTenant, selectedParent, isSubTenant])
 
   return (
     <div className="space-y-6">

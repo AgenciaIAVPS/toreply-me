@@ -14,7 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Pencil, Archive, Link2, Lock, Unlock, DollarSign, Settings2, RotateCcw, CreditCard } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Plus, Pencil, Archive, Link2, Lock, Unlock, DollarSign, Settings2, RotateCcw, CreditCard, GitBranch } from 'lucide-react'
 
 interface TenantForm {
   name: string
@@ -53,6 +54,12 @@ export default function TenantsPage() {
   const [ratesSub, setRatesSub] = useState('')
   const [ratesOpen, setRatesOpen] = useState(false)
   const [ratesLoading, setRatesLoading] = useState(false)
+
+  // Link (relationship) dialog
+  const [linkTarget, setLinkTarget] = useState<Tenant | null>(null)
+  const [linkParentId, setLinkParentId] = useState('')
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkLoading, setLinkLoading] = useState(false)
 
   // Subscriptions dialog
   const [subTarget, setSubTarget] = useState<Tenant | null>(null)
@@ -224,6 +231,30 @@ export default function TenantsPage() {
     }
   }
 
+  const openLink = (t: Tenant) => {
+    setLinkTarget(t)
+    setLinkParentId('')
+    setLinkOpen(true)
+  }
+
+  const saveLink = async () => {
+    if (!linkTarget || !linkParentId) return
+    setLinkLoading(true)
+    try {
+      await api.post('/tenants-relationships-create', {
+        parent_tenant_id: parseInt(linkParentId),
+        child_tenant_id: linkTarget.tenant_id,
+      })
+      toast.success('Relação criada')
+      setLinkOpen(false)
+      reload()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao criar relação')
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
   const openSubs = async (t: Tenant) => {
     setSubTarget(t)
     setSubMonth(new Date().toISOString().slice(0, 7))
@@ -281,6 +312,9 @@ export default function TenantsPage() {
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openCredits(t)} title="Inserir créditos"><DollarSign size={13} /></Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openRates(t)} title="Definir taxas"><Settings2 size={13} /></Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSubs(t)} title="Mensalidades"><CreditCard size={13} /></Button>
+                {!t.tenant_is_master && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" onClick={() => openLink(t)} title="Vincular como filho de..."><GitBranch size={13} /></Button>
+                )}
                 <Button variant="ghost" size="icon" className={`h-7 w-7 ${t.tenant_is_blocked ? 'text-green-600' : 'text-orange-500'}`} onClick={() => toggleBlock(t)} title={t.tenant_is_blocked ? 'Desbloquear' : 'Bloquear'}>
                   {t.tenant_is_blocked ? <Unlock size={13} /> : <Lock size={13} />}
                 </Button>
@@ -417,6 +451,38 @@ export default function TenantsPage() {
             </div>
             <Button className="w-full" onClick={saveRates} disabled={ratesLoading}>
               {ratesLoading ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Link (relationship) dialog */}
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Vincular como filho — {linkTarget?.tenant_name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Selecione o tenant <strong>pai</strong> que irá controlar <strong>{linkTarget?.tenant_name}</strong>.
+            </p>
+            <div className="space-y-1">
+              <Label>Tenant pai</Label>
+              <Select value={linkParentId} onValueChange={setLinkParentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeList
+                    .filter(t => t.tenant_id !== linkTarget?.tenant_id)
+                    .map(t => (
+                      <SelectItem key={t.tenant_id} value={String(t.tenant_id)}>
+                        {t.tenant_name} ({t.tenant_slug})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" onClick={saveLink} disabled={linkLoading || !linkParentId}>
+              {linkLoading ? 'Criando...' : 'Criar relação'}
             </Button>
           </div>
         </DialogContent>
