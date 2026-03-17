@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -23,6 +23,7 @@ const schema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().refine(validatePassword, 'Senha não atende aos requisitos'),
   confirmPassword: z.string(),
+  tosAccepted: z.literal(true, { message: 'Você deve aceitar os termos de uso' }),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'As senhas não coincidem',
   path: ['confirmPassword'],
@@ -33,9 +34,16 @@ export default function InviteRegisterPage() {
   const router = useRouter()
   const params = useParams()
   const inviteToken = params.inviteToken as string
-  const { login } = useAuth()
+  const { login, refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [password, setPassword] = useState('')
+  const [tosUrl, setTosUrl] = useState('')
+
+  useEffect(() => {
+    api.get<{ tos_url?: string }>('/system-config', { auth: false })
+      .then(d => { if (d.tos_url) setTosUrl(d.tos_url) })
+      .catch(() => {})
+  }, [])
 
   const handleGoogleRegister = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?invite_token=${inviteToken}`
@@ -53,8 +61,12 @@ export default function InviteRegisterPage() {
         email: data.email,
         password: data.password,
         invite_token: inviteToken,
+        tos_accepted: true,
       }, { auth: false })
       login(res)
+      if (!res.tenants || res.tenants.length === 0) {
+        await refreshUser()
+      }
       router.push('/dashboard')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao criar conta')
@@ -100,6 +112,30 @@ export default function InviteRegisterPage() {
             <Label htmlFor="confirmPassword">Confirmar senha</Label>
             <PasswordInput id="confirmPassword" placeholder="••••••••" {...register('confirmPassword')} />
             {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="tosAccepted"
+                className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+                {...register('tosAccepted')}
+              />
+              <Label htmlFor="tosAccepted" className="text-sm leading-relaxed cursor-pointer font-normal">
+                Concordo com os{' '}
+                <a
+                  href={tosUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-primary font-medium"
+                  onClick={e => { if (!tosUrl) e.preventDefault() }}
+                >
+                  termos de uso
+                </a>
+                {' '}do serviço
+              </Label>
+            </div>
+            {errors.tosAccepted && <p className="text-xs text-destructive">{errors.tosAccepted.message}</p>}
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Criando conta...' : 'Criar conta e entrar'}

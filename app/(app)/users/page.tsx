@@ -29,6 +29,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('users')
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
@@ -101,19 +102,17 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="users">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             {isMaster && <TabsTrigger value="master">Usuários Master</TabsTrigger>}
           </TabsList>
-          <TabsContent value="users" asChild>
-            {isAdmin ? (
-              <Button onClick={generateInvite} size="sm">
-                <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
-              </Button>
-            ) : <span />}
-          </TabsContent>
+          {activeTab === 'users' && isAdmin && (
+            <Button onClick={generateInvite} size="sm">
+              <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
+            </Button>
+          )}
         </div>
 
         <TabsContent value="users" className="mt-4">

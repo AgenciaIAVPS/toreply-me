@@ -22,6 +22,7 @@ export interface Tenant {
   tenant_ai_cost_multiplier: number | null
   tenant_ai_fixed_fee: number | null
   tenant_subscription_fee: number | null
+  tenant_sub_paid_current_month: boolean
 }
 
 export interface AuthResponse {
