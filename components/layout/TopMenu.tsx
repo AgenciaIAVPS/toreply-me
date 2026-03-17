@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,12 +9,22 @@ import { UserMenu } from './UserMenu'
 import { TenantSwitcher } from './TenantSwitcher'
 import { CreditsBadge } from './CreditsBadge'
 import { EmailBanner } from './EmailBanner'
+import { Menu, X } from 'lucide-react'
 
 export function TopMenu() {
   const { user, tenants } = useAuth()
   const { selectedTenant } = useTenant()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard', show: true },
+    { href: '/users', label: 'Usuários', show: !!selectedTenant },
+    { href: '/tenants', label: 'Tenants', show: !!isMaster },
+    { href: '/payments', label: 'Pagamentos', show: !!isAdmin },
+    { href: '/settings', label: 'Configurações', show: !!selectedTenant },
+  ]
 
   return (
     <>
@@ -36,36 +47,13 @@ export function TopMenu() {
             )}
           </Link>
 
-          {/* Nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-              Dashboard
-            </Link>
-            {selectedTenant && (
-              <Link href="/users" className="text-muted-foreground hover:text-foreground transition-colors">
-                Usuários
+          {/* Desktop Nav */}
+          <nav className="hidden min-[800px]:flex items-center gap-6 text-sm">
+            {navLinks.filter(l => l.show).map(l => (
+              <Link key={l.href} href={l.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                {l.label}
               </Link>
-            )}
-            {isMaster && (
-              <Link href="/tenants" className="text-muted-foreground hover:text-foreground transition-colors">
-                Tenants
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/payments" className="text-muted-foreground hover:text-foreground transition-colors">
-                Pagamentos
-              </Link>
-            )}
-            {selectedTenant && (
-              <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                Configurações
-              </Link>
-            )}
-            {isMaster && (
-              <Link href="/master-users" className="text-muted-foreground hover:text-foreground transition-colors">
-                Usuários Master
-              </Link>
-            )}
+            ))}
           </nav>
 
           {/* Right side */}
@@ -73,8 +61,31 @@ export function TopMenu() {
             {isAdmin && <CreditsBadge />}
             {tenants.length > 1 && <TenantSwitcher />}
             <UserMenu />
+            <button
+              className="max-[799px]:flex hidden p-1.5 rounded-md hover:bg-muted transition-colors"
+              onClick={() => setMobileOpen(o => !o)}
+              aria-label="Menu"
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Nav */}
+        {mobileOpen && (
+          <nav className="max-[799px]:flex hidden border-t bg-background px-4 py-3 flex-col gap-3 text-sm">
+            {navLinks.filter(l => l.show).map(l => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="text-muted-foreground hover:text-foreground transition-colors py-1"
+                onClick={() => setMobileOpen(false)}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </header>
     </>
   )

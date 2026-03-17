@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
           <TabsTrigger value="conta">Conta</TabsTrigger>
-          {isMaster && <TabsTrigger value="master">Master</TabsTrigger>}
+          {isMaster && <TabsTrigger value="master">Sistema</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="empresa" className="mt-4">
@@ -220,7 +220,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {isMaster && (
-          <TabsContent value="master" className="mt-4">
+          <TabsContent value="master" className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Configurações globais de IA</CardTitle>
@@ -250,6 +250,35 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Sistema</CardTitle>
+                <CardDescription>Configurações gerais exibidas no frontend para todos os usuários.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Link dos termos de uso</Label>
+                  <p className="text-xs text-muted-foreground">URL exibida no checkbox de cadastro de novos usuários</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={masterSettings['tos_url'] ?? ''}
+                      onChange={e => setMasterSettings(s => ({ ...s, tos_url: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={savingMaster}
+                      onClick={() => saveMasterSetting('tos_url', masterSettings['tos_url'] ?? '')}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

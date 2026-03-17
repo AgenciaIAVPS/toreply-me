@@ -37,8 +37,7 @@ export default function RegisterPage() {
   const [tosUrl, setTosUrl] = useState('')
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/webhook/system-config`)
-      .then(r => r.json())
+    api.get<{ tos_url?: string }>('/system-config', { auth: false })
       .then(d => { if (d.tos_url) setTosUrl(d.tos_url) })
       .catch(() => {})
   }, [])
