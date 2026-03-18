@@ -289,7 +289,13 @@ export default function TenantsPage() {
 
   if (!user?.user_is_master_admin) return null
 
-  const TenantCard = ({ t, archived = false }: { t: Tenant; archived?: boolean }) => (
+  const TenantCard = ({ t, archived = false }: { t: Tenant; archived?: boolean }) => {
+    // Children: tenants in the active list whose tenant_parents include this tenant as parent
+    const children = activeList.filter(c =>
+      c.tenant_id !== t.tenant_id &&
+      (c.tenant_parents ?? []).some(p => p.rel_parent_tenant_id === t.tenant_id)
+    )
+    return (
     <Card key={t.tenant_id} className={t.tenant_is_blocked ? 'border-destructive/50' : ''}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-start justify-between gap-2">
@@ -303,6 +309,18 @@ export default function TenantsPage() {
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{t.tenant_slug}</p>
             <p className="text-xs text-muted-foreground">Saldo: <span className={Number(t.tenant_credits ?? 0) < 0 ? 'text-destructive font-medium' : ''}>R$ {Number(t.tenant_credits ?? 0).toFixed(2)}</span></p>
+            {/* Parent info */}
+            {(t.tenant_parents ?? []).length > 0 && (
+              <p className="text-xs text-blue-600 mt-0.5">
+                Filho de: {(t.tenant_parents ?? []).map(p => p.rel_parent_tenant_name).join(', ')}
+              </p>
+            )}
+            {/* Children info */}
+            {children.length > 0 && (
+              <p className="text-xs text-purple-600 mt-0.5">
+                Filhos: {children.map(c => c.tenant_name).join(', ')}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {!archived ? (
@@ -330,6 +348,7 @@ export default function TenantsPage() {
       </CardHeader>
     </Card>
   )
+  }
 
   return (
     <div className="space-y-4">

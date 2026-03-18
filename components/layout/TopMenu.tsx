@@ -31,7 +31,7 @@ export function TopMenu() {
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', show: true },
     { href: '/users', label: 'Usuários', show: !!selectedTenant && !isSubTenant || !!selectedTenant && !!isAdmin },
-    { href: '/clients', label: 'Clientes', show: !isSubTenant && !!(isParent || isMaster) },
+    { href: '/clients', label: 'Clientes', show: !!isAdmin && !isSubTenant && !!(isParent || isMaster) },
     { href: '/payments', label: 'Pagamentos', show: !!isAdmin },
     { href: '/tenants', label: 'Tenants', show: !!isMaster },
     { href: '/settings', label: 'Configurações', show: !!selectedTenant },
