@@ -35,11 +35,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return
     }
     const stored = localStorage.getItem('trm_tenant_id')
+    let resolved: Tenant | null = null
     if (stored) {
       const found = tenants.find(t => t.tenant_id === Number(stored))
-      if (found) setSelectedTenantState(found)
+      if (found) resolved = found
     } else if (tenants.length === 1) {
-      setSelectedTenantState(tenants[0])
+      resolved = tenants[0]
+    }
+    if (resolved) {
+      setSelectedTenantState(resolved)
+    } else {
+      // No tenant to select — second useEffect won't fire (selectedTenant stays null),
+      // so resolve parentResolved here directly to avoid infinite spinner.
+      setParentResolved(true)
     }
     setTenantResolved(true)
   }, [tenants, loading])

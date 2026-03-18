@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (
       selectedTenant &&
       isSubTenant &&
-      selectedTenant.tenant_parents.length > 1 &&
+      (selectedTenant.tenant_parents?.length ?? 0) > 1 &&
       !selectedParent &&
       pathname !== '/select-parent'
     ) {
