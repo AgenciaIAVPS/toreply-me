@@ -18,11 +18,19 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path: str
   const body =
     req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined
 
-  const res = await fetch(target, {
-    method: req.method,
-    headers,
-    body,
-  })
+  let res: Response
+  try {
+    res = await fetch(target, {
+      method: req.method,
+      headers,
+      body,
+      cache: 'no-store',
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[n8n-proxy] fetch error:', msg, 'target:', target)
+    return NextResponse.json({ error: 'proxy_error', detail: msg }, { status: 502 })
+  }
 
   const resHeaders = new Headers()
   res.headers.forEach((value, key) => {
