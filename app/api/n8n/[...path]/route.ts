@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const N8N_BASE = process.env.N8N_INTERNAL_URL || 'https://api.toreply.me/webhook'
 
-async function proxy(req: NextRequest, { params }: { params: { path: string[] } }) {
-  const targetPath = params.path.join('/')
+async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params
+  const targetPath = path.join('/')
   const search = req.nextUrl.search
   const target = `${N8N_BASE}/${targetPath}${search}`
 
