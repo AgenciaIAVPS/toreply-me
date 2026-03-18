@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt } from 'lucide-react'
+import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt, UserPlus } from 'lucide-react'
 
 type DialogMode = 'edit' | 'credits' | 'fees' | 'subscription' | null
 
@@ -28,6 +28,11 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [active, setActive] = useState<RelChildSummary | null>(null)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
+
+  // Client invite link
+  const [clientInviteUrl, setClientInviteUrl] = useState<string | null>(null)
+  const [clientInviteOpen, setClientInviteOpen] = useState(false)
+  const [clientInviteLoading, setClientInviteLoading] = useState(false)
 
   // Edit form
   const [editName, setEditName] = useState('')
@@ -49,6 +54,22 @@ export default function ClientsPage() {
   const [subAmount, setSubAmount] = useState('')
 
   const canAccess = !!(isMaster || isParent)
+
+  const generateClientInvite = async () => {
+    if (!selectedTenant) return
+    setClientInviteLoading(true)
+    try {
+      const res = await api.post<{ invite_url: string }>('/invites-generate-client', {
+        tenant_id: selectedTenant.tenant_id,
+      })
+      setClientInviteUrl(res.invite_url)
+      setClientInviteOpen(true)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar convite')
+    } finally {
+      setClientInviteLoading(false)
+    }
+  }
 
   const load = () => {
     if (!selectedTenant) return
@@ -167,9 +188,15 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <p className="text-sm text-muted-foreground">Sub-tenants vinculados a esta conta.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Sub-tenants vinculados a esta conta.</p>
+        </div>
+        <Button onClick={generateClientInvite} disabled={clientInviteLoading} size="sm">
+          <UserPlus className="mr-2 h-4 w-4" />
+          {clientInviteLoading ? 'Gerando...' : 'Convidar por link'}
+        </Button>
       </div>
 
       {loading ? (
@@ -305,6 +332,25 @@ export default function ClientsPage() {
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
             <Button onClick={saveFees} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Client invite link */}
+      <Dialog open={clientInviteOpen} onOpenChange={setClientInviteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Link de convite de cliente</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Compartilhe este link. Quem criar uma conta através dele será vinculado automaticamente como cliente desta empresa.
+            </p>
+            <div className="flex gap-2">
+              <Input value={clientInviteUrl || ''} readOnly className="font-mono text-xs" />
+              <Button variant="outline" onClick={() => {
+                navigator.clipboard.writeText(clientInviteUrl || '')
+                toast.success('Copiado!')
+              }}>Copiar</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
