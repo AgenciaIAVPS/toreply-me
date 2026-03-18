@@ -50,7 +50,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setSelectedParentState(null)
     setParentResolved(false)
 
-    if (!selectedTenant || selectedTenant.tenant_parents.length === 0) {
+    if (!selectedTenant || !selectedTenant.tenant_parents?.length) {
       setParentResolved(true)
       return
     }
@@ -82,7 +82,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setSelectedParentState(rel)
   }
 
-  const isSubTenant = !!(selectedTenant && selectedTenant.tenant_parents.length > 0)
+  const isSubTenant = !!(selectedTenant && (selectedTenant.tenant_parents?.length ?? 0) > 0)
 
   return (
     <TenantContext.Provider value={{

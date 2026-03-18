@@ -40,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(data.user)
     setTenants(data.tenants ?? [])
+    // Refresh to get tenant_parents / tenant_is_parent from /auth/me
+    refreshUser().catch(() => {})
   }
 
   const logout = () => {
