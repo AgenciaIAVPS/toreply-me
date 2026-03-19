@@ -28,6 +28,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [active, setActive] = useState<RelChildSummary | null>(null)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
+  const [search, setSearch] = useState('')
 
   // Client invite link
   const [clientInviteUrl, setClientInviteUrl] = useState<string | null>(null)
@@ -225,7 +226,17 @@ export default function ClientsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {clients.map(child => (
+          <Input
+            placeholder="Pesquisar por nome..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="max-w-xs"
+          />
+          {clients.filter(c =>
+            !search ||
+            (c.child_tenant_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+            (c.rel_name ?? '').toLowerCase().includes(search.toLowerCase())
+          ).map(child => (
             <Card key={child.rel_id} className={child.rel_is_blocked ? 'opacity-60' : ''}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-3">

@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, tenants, loading } = useAuth()
-  const { selectedTenant, tenantResolved, selectedParent, parentResolved, isSubTenant } = useTenant()
+  const { selectedTenant, tenantResolved, selectedParent, parentResolved, isSubTenant, parentIsSelf } = useTenant()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -29,17 +29,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return
     }
     if (!parentResolved) return
-    // If tenant has 2+ parents and none is selected, redirect to select-parent
+    // If tenant has 1+ parents and none is selected (and user didn't choose 'self'), redirect to select-parent
     if (
       selectedTenant &&
       isSubTenant &&
-      (selectedTenant.tenant_parents?.length ?? 0) > 1 &&
+      (selectedTenant.tenant_parents?.length ?? 0) >= 1 &&
       !selectedParent &&
+      !parentIsSelf &&
       pathname !== '/select-parent'
     ) {
       router.push('/select-parent')
     }
-  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router, parentResolved, selectedParent, isSubTenant])
+  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router, parentResolved, selectedParent, isSubTenant, parentIsSelf])
 
   if (loading || !tenantResolved || !parentResolved) {
     return (

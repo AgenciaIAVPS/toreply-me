@@ -11,6 +11,8 @@ interface TenantContextType {
   selectedParent: TenantRelationship | null
   parentResolved: boolean
   setSelectedParent: (rel: TenantRelationship) => void
+  setParentSelf: () => void
+  parentIsSelf: boolean
   isSubTenant: boolean
 }
 
@@ -22,6 +24,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenantResolved, setTenantResolved] = useState(false)
   const [selectedParent, setSelectedParentState] = useState<TenantRelationship | null>(null)
   const [parentResolved, setParentResolved] = useState(false)
+  const [parentIsSelf, setParentIsSelf] = useState(false)
 
   // Resolve tenant from localStorage or auto-select if only one
   useEffect(() => {
@@ -29,6 +32,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setSelectedTenantState(null)
     setSelectedParentState(null)
     setParentResolved(false)
+    setParentIsSelf(false)
     if (!tenants || tenants.length === 0) {
       setTenantResolved(true)
       setParentResolved(true)
@@ -45,8 +49,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (resolved) {
       setSelectedTenantState(resolved)
     } else {
-      // No tenant to select — second useEffect won't fire (selectedTenant stays null),
-      // so resolve parentResolved here directly to avoid infinite spinner.
       setParentResolved(true)
     }
     setTenantResolved(true)
@@ -56,6 +58,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!tenantResolved) return
     setSelectedParentState(null)
+    setParentIsSelf(false)
     setParentResolved(false)
 
     if (!selectedTenant || !selectedTenant.tenant_parents?.length) {
@@ -63,19 +66,27 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Auto-select if only one parent
-    if (selectedTenant.tenant_parents.length === 1) {
-      setSelectedParentState(selectedTenant.tenant_parents[0])
+    // Check localStorage first
+    const storedRelId = localStorage.getItem('trm_parent_rel_id')
+
+    if (storedRelId === 'self') {
+      // User explicitly chose to work as their own tenant (no parent context)
+      setSelectedParentState(null)
+      setParentIsSelf(true)
       setParentResolved(true)
       return
     }
 
-    // Restore from localStorage when multiple parents exist
-    const storedRelId = localStorage.getItem('trm_parent_rel_id')
     if (storedRelId) {
       const found = selectedTenant.tenant_parents.find(p => p.rel_id === storedRelId)
-      if (found) setSelectedParentState(found)
+      if (found) {
+        setSelectedParentState(found)
+        setParentResolved(true)
+        return
+      }
     }
+
+    // No stored choice → resolved but no parent selected → layout redirects to /select-parent
     setParentResolved(true)
   }, [selectedTenant, tenantResolved])
 
@@ -88,6 +99,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const setSelectedParent = (rel: TenantRelationship) => {
     localStorage.setItem('trm_parent_rel_id', rel.rel_id)
     setSelectedParentState(rel)
+    setParentIsSelf(false)
+  }
+
+  const setParentSelf = () => {
+    localStorage.setItem('trm_parent_rel_id', 'self')
+    setSelectedParentState(null)
+    setParentIsSelf(true)
   }
 
   const isSubTenant = !!(selectedTenant && (selectedTenant.tenant_parents?.length ?? 0) > 0)
@@ -100,6 +118,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       selectedParent,
       parentResolved,
       setSelectedParent,
+      setParentSelf,
+      parentIsSelf,
       isSubTenant,
     }}>
       {children}

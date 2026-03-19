@@ -77,6 +77,7 @@ export default function TenantsPage() {
 
   const [activeList, setActiveList] = useState<Tenant[]>([])
   const [archivedList, setArchivedList] = useState<Tenant[]>([])
+  const [search, setSearch] = useState('')
 
   const load = (f: string) => {
     setLoading(true)
@@ -91,11 +92,14 @@ export default function TenantsPage() {
 
   const reload = () => { load('all'); load('archived') }
 
+  const isOverdue = (t: Tenant) => (t.tenant_subscription_fee ?? 0) > 0 && !t.tenant_sub_paid_current_month
+
   // Filter active list
   const filteredActive = activeList.filter(t => {
-    if (filter === 'blocked') return t.tenant_is_blocked
-    if (filter === 'negative_credits') return Number(t.tenant_credits ?? 0) < 0
-    if (filter === 'overdue_subscription') return !!t.tenant_subscription_fee && !t.tenant_sub_paid_current_month
+    if (filter === 'blocked' && !t.tenant_is_blocked) return false
+    if (filter === 'negative_credits' && Number(t.tenant_credits ?? 0) >= 0) return false
+    if (filter === 'overdue_subscription' && !isOverdue(t)) return false
+    if (search && !t.tenant_name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
@@ -305,7 +309,7 @@ export default function TenantsPage() {
               {t.tenant_is_master && <Badge variant="secondary" className="text-xs">Master</Badge>}
               {t.tenant_is_blocked && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
               {Number(t.tenant_credits ?? 0) < 0 && <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Crédito negativo</Badge>}
-              {t.tenant_subscription_fee !== null && !t.tenant_sub_paid_current_month && <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700">Mensalidade atrasada</Badge>}
+              {isOverdue(t) && <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700">Mensalidade atrasada</Badge>}
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{t.tenant_slug}</p>
             <p className="text-xs text-muted-foreground">Saldo: <span className={Number(t.tenant_credits ?? 0) < 0 ? 'text-destructive font-medium' : ''}>R$ {Number(t.tenant_credits ?? 0).toFixed(2)}</span></p>
@@ -364,6 +368,12 @@ export default function TenantsPage() {
         </TabsList>
 
         <TabsContent value="ativos" className="mt-3 space-y-3">
+          <Input
+            placeholder="Pesquisar por nome..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="max-w-xs"
+          />
           <div className="flex flex-wrap gap-2">
             {(['all', 'blocked', 'negative_credits', 'overdue_subscription'] as const).map(f => (
               <Button key={f} size="sm" variant={filter === f ? 'default' : 'outline'} onClick={() => setFilter(f)}>
