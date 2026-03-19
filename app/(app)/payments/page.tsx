@@ -19,7 +19,7 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 export default function PaymentsPage() {
-  const { selectedTenant, selectedParent, isSubTenant } = useTenant()
+  const { selectedTenant, selectedParent, isSubTenant, parentResolved } = useTenant()
   const router = useRouter()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
 
@@ -28,15 +28,21 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     if (!isAdmin) { router.push('/dashboard'); return }
-    if (!selectedTenant) return
-    const balanceUrl = isSubTenant && selectedParent
-      ? `/credits/balance?rel_id=${selectedParent.rel_id}`
-      : `/credits/balance?tenant_id=${selectedTenant.tenant_id}`
+    if (!selectedTenant || !parentResolved) return
+
+    let balanceUrl: string
+    if (isSubTenant && selectedParent) {
+      balanceUrl = `/credits/balance?rel_id=${selectedParent.rel_id}`
+    } else {
+      balanceUrl = `/credits/balance?tenant_id=${selectedTenant.tenant_id}`
+    }
+
+    setLoading(true)
     api.get<CreditBalance>(balanceUrl)
       .then(r => setData(r))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [selectedTenant, selectedParent, isSubTenant, isAdmin])
+  }, [selectedTenant, parentResolved, isAdmin])
 
   if (!isAdmin) return null
 
