@@ -10,18 +10,13 @@ import Image from 'next/image'
 
 export default function SelectParentPage() {
   const router = useRouter()
-  const { selectedTenant, setSelectedParent, setParentSelf } = useTenant()
+  const { selectedTenant, setSelectedParent } = useTenant()
   const [cacheKey] = useState(() => Date.now())
 
   const parents = selectedTenant?.tenant_parents ?? []
 
   const handleSelect = (rel: TenantRelationship) => {
     setSelectedParent(rel)
-    router.push('/dashboard')
-  }
-
-  const handleSelf = () => {
-    setParentSelf()
     router.push('/dashboard')
   }
 
@@ -34,36 +29,6 @@ export default function SelectParentPage() {
         </p>
       </div>
       <div className="space-y-3">
-        {/* Option: work as own tenant (independent) */}
-        <Card
-          className="cursor-pointer hover:border-primary transition-colors border-dashed"
-          onClick={handleSelf}
-        >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                {selectedTenant?.tenant_logo_url ? (
-                  <Image
-                    src={`${selectedTenant.tenant_logo_url}?v=${cacheKey}`}
-                    alt={selectedTenant.tenant_name}
-                    width={40}
-                    height={40}
-                    className="object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              <div>
-                <CardTitle className="text-base">{selectedTenant?.tenant_name}</CardTitle>
-                <CardDescription className="text-xs">Acesso independente (sem parceiro)</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Parent tenant options */}
         {parents.map(rel => (
           <Card
             key={rel.rel_id}

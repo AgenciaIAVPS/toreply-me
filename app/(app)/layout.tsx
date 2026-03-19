@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, tenants, loading } = useAuth()
-  const { selectedTenant, tenantResolved, selectedParent, parentResolved, isSubTenant, parentIsSelf } = useTenant()
+  const { selectedTenant, tenantResolved, selectedParent, parentResolved, isSubTenant } = useTenant()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -33,14 +33,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (
       selectedTenant &&
       isSubTenant &&
-      (selectedTenant.tenant_parents?.length ?? 0) >= 1 &&
+      (selectedTenant.tenant_parents?.length ?? 0) > 1 &&
       !selectedParent &&
-      !parentIsSelf &&
       pathname !== '/select-parent'
     ) {
       router.push('/select-parent')
     }
-  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router, parentResolved, selectedParent, isSubTenant, parentIsSelf])
+  }, [user, loading, tenantResolved, selectedTenant, tenants, pathname, router, parentResolved, selectedParent, isSubTenant])
 
   if (loading || !tenantResolved || !parentResolved) {
     return (

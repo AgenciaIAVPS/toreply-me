@@ -15,6 +15,8 @@ function CallbackHandler() {
 
   useEffect(() => {
     const token = searchParams.get('token')
+    const isNewAccount = searchParams.get('new_account') === '1'
+
     if (!token) {
       toast.error('Falha na autenticação com Google')
       router.push('/login')
@@ -25,7 +27,10 @@ function CallbackHandler() {
     api.get<{ user: User; tenants: Tenant[] }>('/auth/me')
       .then(res => {
         login({ token, user: res.user, tenants: res.tenants })
-        if (res.tenants.length === 1) {
+        if (isNewAccount && res.tenants.length === 1) {
+          // New Google user — redirect to setup to configure workspace name/slug/logo
+          router.push('/setup')
+        } else if (res.tenants.length <= 1) {
           router.push('/dashboard')
         } else {
           router.push('/select-tenant')
