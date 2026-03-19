@@ -19,7 +19,7 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 export default function PaymentsPage() {
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const router = useRouter()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
 
@@ -29,12 +29,14 @@ export default function PaymentsPage() {
   useEffect(() => {
     if (!isAdmin) { router.push('/dashboard'); return }
     if (!selectedTenant) return
-    // Sub-tenant queries own balance using tenant_id (main ledger tables)
-    api.get<CreditBalance>(`/credits/balance?tenant_id=${selectedTenant.tenant_id}`)
+    const balanceUrl = isSubTenant && selectedParent
+      ? `/credits/balance?rel_id=${selectedParent.rel_id}`
+      : `/credits/balance?tenant_id=${selectedTenant.tenant_id}`
+    api.get<CreditBalance>(balanceUrl)
       .then(r => setData(r))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [selectedTenant, isAdmin])
+  }, [selectedTenant, selectedParent, isSubTenant, isAdmin])
 
   if (!isAdmin) return null
 
@@ -52,7 +54,9 @@ export default function PaymentsPage() {
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold">Pagamentos</h1>
-        <p className="text-sm text-muted-foreground">Histórico financeiro do tenant {selectedTenant?.tenant_name}</p>
+        <p className="text-sm text-muted-foreground">
+          Histórico financeiro do tenant {isSubTenant && selectedParent ? selectedParent.rel_parent_tenant_name : selectedTenant?.tenant_name}
+        </p>
       </div>
 
       {/* Summary cards */}

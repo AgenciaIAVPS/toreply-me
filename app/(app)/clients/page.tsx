@@ -13,9 +13,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt, UserPlus } from 'lucide-react'
+import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt, UserPlus, Unlink2 } from 'lucide-react'
 
-type DialogMode = 'edit' | 'credits' | 'fees' | 'subscription' | null
+type DialogMode = 'edit' | 'credits' | 'fees' | 'subscription' | 'unlink' | null
 
 export default function ClientsPage() {
   const router = useRouter()
@@ -169,6 +169,20 @@ export default function ClientsPage() {
     finally { setSaving(false) }
   }
 
+  const unlinkChild = async () => {
+    if (!active || !selectedTenant) return
+    setSaving(true)
+    try {
+      await api.post('/tenants-relationships-delete', {
+        rel_id: active.rel_id,
+        parent_tenant_id: selectedTenant.tenant_id,
+      })
+      toast.success('Vínculo removido')
+      load(); closeDialog()
+    } catch { toast.error('Erro ao desvincular') }
+    finally { setSaving(false) }
+  }
+
   const saveSubscription = async () => {
     if (!active) return
     setSaving(true)
@@ -255,6 +269,9 @@ export default function ClientsPage() {
                     <Button variant="ghost" size="icon" title={child.rel_is_blocked ? 'Desbloquear' : 'Bloquear'} onClick={() => toggleBlock(child)}>
                       {child.rel_is_blocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                     </Button>
+                    <Button variant="ghost" size="icon" title="Desvincular" onClick={() => openDialog(child, 'unlink')}>
+                      <Unlink2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -331,6 +348,25 @@ export default function ClientsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
             <Button onClick={saveFees} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Unlink client */}
+      <Dialog open={dialogMode === 'unlink'} onOpenChange={open => !open && closeDialog()}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Desvincular cliente</DialogTitle></DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja desvincular <strong>{active?.rel_name ?? active?.child_tenant_name}</strong>?
+              O tenant passará a ser independente e não aparecerá mais nesta lista.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+            <Button variant="destructive" onClick={unlinkChild} disabled={saving}>
+              {saving ? 'Removendo...' : 'Desvincular'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

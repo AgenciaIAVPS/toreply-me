@@ -3,17 +3,19 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/contexts/TenantContext'
 import { UserMenu } from './UserMenu'
 import { TenantSwitcher } from './TenantSwitcher'
 import { CreditsBadge } from './CreditsBadge'
 import { EmailBanner } from './EmailBanner'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, ArrowLeftRight } from 'lucide-react'
 
 export function TopMenu() {
   const { user, tenants } = useAuth()
   const { selectedTenant, selectedParent, isSubTenant } = useTenant()
+  const router = useRouter()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
   const isParent = selectedTenant?.tenant_is_parent
@@ -70,6 +72,18 @@ export function TopMenu() {
           {/* Right side */}
           <div className="flex items-center gap-3">
             {isAdmin && <CreditsBadge />}
+            {isSubTenant && (selectedTenant?.tenant_parents?.length ?? 0) > 1 && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('trm_parent_rel_id')
+                  router.push('/select-parent')
+                }}
+                title="Trocar de contexto"
+                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeftRight size={16} />
+              </button>
+            )}
             {tenants.length > 1 && <TenantSwitcher />}
             <UserMenu />
             <button

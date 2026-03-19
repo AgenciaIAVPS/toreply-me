@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('trm_token')
     localStorage.removeItem('trm_tenant_id')
+    localStorage.removeItem('trm_parent_rel_id')
     setToken(null)
     setUser(null)
     setTenants([])
