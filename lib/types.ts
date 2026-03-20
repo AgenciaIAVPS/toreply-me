@@ -38,6 +38,7 @@ export interface Tenant {
   tenant_ai_fixed_fee: number | null
   tenant_subscription_fee: number | null
   tenant_sub_paid_current_month: boolean
+  tenant_is_subscription_client: boolean
   tenant_parents: TenantRelationship[]  // relações onde este é filho
   tenant_is_parent: boolean             // true se for pai de algum tenant
 }

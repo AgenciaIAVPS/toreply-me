@@ -93,9 +93,9 @@ export default function TenantsPage() {
   const reload = () => { load('all'); load('archived') }
 
   const isOverdue = (t: Tenant): boolean => {
-    const fee = Number(t.tenant_subscription_fee ?? 0)
+    const isClient = String(t.tenant_is_subscription_client) === 'true'
     const paid = String(t.tenant_sub_paid_current_month) === 'true'
-    return fee > 0 && !paid
+    return isClient && !paid
   }
 
   // Filter active list
