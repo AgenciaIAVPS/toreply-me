@@ -17,6 +17,7 @@ export function TopMenu() {
   const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const router = useRouter()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
   const isParent = selectedTenant?.tenant_is_parent
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -32,8 +33,12 @@ export function TopMenu() {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', show: true },
-    { href: '/users', label: 'Usuários', show: !!selectedTenant && !isSubTenant || !!selectedTenant && !!isAdmin },
+    { href: '/users', label: 'Usuários', show: !!selectedTenant && (!isSubTenant || !!isAdmin) },
     { href: '/clients', label: 'Clientes', show: !!isAdmin && !isSubTenant && !!(isParent || isMaster) },
+    { href: '/agents', label: 'Agentes', show: !!selectedTenant },
+    { href: '/instances', label: 'Instâncias', show: !!selectedTenant && (!!isAdmin || !!isAgentsAdmin || !!isMaster) },
+    { href: '/conversations', label: 'Conversas', show: !!selectedTenant },
+    { href: '/contacts', label: 'Contatos', show: !!selectedTenant },
     { href: '/payments', label: 'Pagamentos', show: !!isAdmin },
     { href: '/tenants', label: 'Tenants', show: !!isMaster },
     { href: '/settings', label: 'Configurações', show: !!selectedTenant },

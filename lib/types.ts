@@ -32,7 +32,7 @@ export interface Tenant {
   tenant_is_archived: boolean
   tenant_is_blocked: boolean
   tenant_credits: number
-  tenant_user_role: 'admin' | 'normal'
+  tenant_user_role: 'admin' | 'normal' | 'agents_admin'
   tenant_logo_url: string | null
   tenant_ai_cost_multiplier: number | null
   tenant_ai_fixed_fee: number | null
@@ -63,7 +63,7 @@ export interface TenantUser {
   user_email: string
   user_avatar_url: string | null
   user_email_verified: boolean
-  tenant_user_role: 'admin' | 'normal'
+  tenant_user_role: 'admin' | 'normal' | 'agents_admin'
 }
 
 export interface LedgerEntry {
@@ -122,6 +122,97 @@ export interface SystemSetting {
   setting_key: string
   setting_value: string
   setting_updated_at: string
+}
+
+export interface Agent {
+  agents_id: number
+  agents_name: string
+  agents_description: string | null
+  agents_is_global: boolean
+  agents_is_close_agent: boolean
+  agents_response_type: 'llm' | 'math'
+  agents_min_chars: number | null
+  agents_max_chars: number | null
+  agents_data_type_description: string | null
+  agents_data_to_report: string | null
+  agents_extra_rules: string | null
+  agents_response_set_data: string | null
+  agents_response_api_payload_template: Record<string, unknown> | null
+  agents_response_format_data: string | null
+}
+
+export interface AgentStep {
+  steps_id: number
+  steps_name: string
+  steps_api_method: string
+  steps_api_endpoint: string
+  steps_api_headers: Record<string, unknown> | null
+  steps_api_payload_template: Record<string, unknown> | null
+  steps_pre_sql: string | null
+  steps_pre_script: string | null
+  steps_post_script: string | null
+  steps_post_sql: string | null
+  agent_steps_order: number
+}
+
+export interface AgentResponseVariable {
+  arv_id: number
+  arv_agent_id: number
+  arv_variable_name: string
+  arv_type: 'string' | 'number' | 'usd_to_brl' | 'json_flatten'
+  arv_label: string
+  arv_order: number
+  arv_sanitize: boolean
+}
+
+export interface Conversation {
+  conversation_id: number
+  conversation_status: 'active' | 'closed' | 'archived'
+  conversation_channel: 'whatsapp' | 'widget'
+  conversation_last_message_at: string | null
+  conversation_external_id: string | null
+  contact_id: number | null
+  contact_name: string
+  contact_phone: string | null
+  instance_name: string | null
+  last_message: string | null
+  last_message_sender: 'ai' | 'contact' | null
+  unread_count: number
+}
+
+export interface Message {
+  messages_id: number
+  messages_sender: 'ai' | 'contact'
+  messages_content: string
+  message_status: string
+  messages_date_creation: string
+}
+
+export interface Contact {
+  contact_id: number
+  contact_name: string
+  nome_empresa: string | null
+  telefone: string | null
+  localizacao: string | null
+  total_conversations: number
+}
+
+export interface Instance {
+  instance_id: number
+  instance_name: string
+  instance_phone_number: string | null
+  instance_status: 'active' | 'inactive' | 'blocked'
+  instance_channel: 'whatsapp' | 'widget'
+  instance_agent_selection_mode: 'fixed' | 'dynamic'
+  instance_current_agent_id: number | null
+  instance_conversation_timeout_minutes: number
+  instance_only_auth: boolean
+  instance_no_auth_message: string | null
+  instance_date_creation: string
+  agent_name: string | null
+  // enriched from Evolution API
+  evolution_state: string | null
+  evolution_connected: boolean
 }
 
 export interface MasterUser {

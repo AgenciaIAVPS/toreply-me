@@ -73,7 +73,7 @@ export default function UsersPage() {
   const changeRole = async (userId: number, role: string) => {
     try {
       await api.post('/users-update-role', { user_id: userId, tenant_id: selectedTenant?.tenant_id, role })
-      setUsers(u => u.map(x => x.user_id === userId ? { ...x, tenant_user_role: role as 'admin' | 'normal' } : x))
+      setUsers(u => u.map(x => x.user_id === userId ? { ...x, tenant_user_role: role as 'admin' | 'normal' | 'agents_admin' } : x))
       toast.success('Permissão atualizada')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao atualizar permissão')
@@ -141,16 +141,17 @@ export default function UsersPage() {
                         {!u.user_email_verified && (
                           <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">Email não verificado</Badge>
                         )}
-                        <Badge variant={u.tenant_user_role === 'admin' ? 'default' : 'secondary'} className="text-xs">
-                          {u.tenant_user_role === 'admin' ? 'Admin' : 'Normal'}
+                        <Badge variant={u.tenant_user_role === 'admin' ? 'default' : u.tenant_user_role === 'agents_admin' ? 'outline' : 'secondary'} className="text-xs">
+                          {u.tenant_user_role === 'admin' ? 'Admin' : u.tenant_user_role === 'agents_admin' ? 'Agents Admin' : 'Normal'}
                         </Badge>
                         {isAdmin && u.user_id !== user?.user_id && (
                           <Select value={u.tenant_user_role} onValueChange={v => changeRole(u.user_id, v)}>
-                            <SelectTrigger className="w-[90px] h-6 text-xs">
+                            <SelectTrigger className="w-[110px] h-6 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="agents_admin">Agents Admin</SelectItem>
                               <SelectItem value="normal">Normal</SelectItem>
                             </SelectContent>
                           </Select>

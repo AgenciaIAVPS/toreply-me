@@ -335,6 +335,235 @@
         "db-migrations.sql inclui CREATE TABLE IF NOT EXISTS tenant_subscriptions com índices",
         "db-migrations.sql inclui função deduct_credits_on_ai_cost atualizada (taxas dinâmicas com fallback system_settings) e recriação do trigger"
       ]
+    },
+    {
+      "id": "PRD-25",
+      "title": "DB Migration Fase 3: Agents Admin + Tabelas UnaragConsole",
+      "priority": "high",
+      "status": "done",
+      "description": "Gerar e documentar SQL de migration Fase 3 no db-migrations.sql: (1) ALTER CHECK em tenants_users para incluir 'agents_admin'; (2) CREATE TABLE local_db_configs para configurações de bancos locais do UnaragConsole; (3) CREATE TABLE local_query_orders para ordens de query local; (4) INSERT device_api_url em system_settings. Executar manualmente no banco restaurant.",
+      "acceptance": [
+        "ALTER TABLE tenants_users DROP CONSTRAINT tenants_users_tenant_user_role_check; ADD CONSTRAINT com CHECK IN ('admin', 'normal', 'agents_admin')",
+        "CREATE TABLE local_db_configs (ldb_id UUID PK, ldb_tenant_id FK, ldb_db_uid VARCHAR UNIQUE, ldb_name TEXT, ldb_type CHECK postgres|mysql|sqlite|sqlserver|oracle, ldb_host, ldb_port, ldb_user, ldb_pass_enc, ldb_database, ldb_is_active, ldb_date_creation)",
+        "CREATE TABLE local_query_orders (lqo_id UUID PK, lqo_order_uid VARCHAR UNIQUE, lqo_tenant_id FK, lqo_db_uid VARCHAR, lqo_query TEXT, lqo_status CHECK pending|completed|error|timeout, lqo_result JSONB, lqo_error TEXT, lqo_date_creation, lqo_date_resolved)",
+        "INSERT INTO system_settings (setting_key, setting_value) VALUES ('device_api_url', 'https://device.toreply.me') ON CONFLICT DO NOTHING",
+        "db-migrations.sql atualizado com comentário '-- FASE 3' separando o bloco"
+      ]
+    },
+    {
+      "id": "PRD-26",
+      "title": "Role Agents Admin: N8N + Frontend",
+      "priority": "high",
+      "status": "pending",
+      "description": "Suportar o novo role 'agents_admin' no sistema. No N8N: atualizar API-Users-Update-Role para aceitar 'agents_admin' nas validações. No Frontend: adicionar 'Agents Admin' como opção no Select de role em users/page.tsx; adicionar helper isAgentsAdmin no TenantContext e TopMenu para controlar visibilidade de novas abas.",
+      "acceptance": [
+        "API-Users-Update-Role: validação SQL aceita 'agents_admin' (sem 400/erro)",
+        "users/page.tsx: Select de role tem terceira opção 'Agents Admin' com valor 'agents_admin'",
+        "TenantContext ou TopMenu: const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'",
+        "isAgentsAdmin exposto para uso nas páginas de Agentes e Instâncias",
+        "Usuário com role agents_admin consegue trocar role de outros para agents_admin"
+      ]
+    },
+    {
+      "id": "PRD-27",
+      "title": "N8N: APIs CRUD de Agentes, Steps e Response Variables",
+      "priority": "high",
+      "status": "pending",
+      "description": "Criar 11 flows N8N para gestão completa de agentes, steps e variáveis de resposta. Todos autenticados via X-API-Key. Steps são vinculados ao agente via agent_steps (com campo order). Para sub-tenants, API-Agents-List retorna os agentes do tenant pai.",
+      "acceptance": [
+        "API-Agents-List: GET /agents-list?tenant_id= retorna agentes com agents_id, agents_name, agents_description, agents_is_global, agents_is_close_agent, agents_response_type",
+        "API-Agents-Create: POST /agents-create cria em agents + retorna agents_id; somente agents_admin ou master_admin",
+        "API-Agents-Update: POST /agents-update atualiza todos os campos do agente",
+        "API-Agents-Delete: POST /agents-delete deleta agente (cascade para steps/agent_steps via FK)",
+        "API-Steps-List: GET /steps-list?agent_id= retorna steps JOIN agent_steps ORDER BY agent_steps_order",
+        "API-Steps-Upsert: POST /steps-upsert cria ou atualiza step em steps + insere/atualiza agent_steps com order",
+        "API-Steps-Delete: POST /steps-delete deleta step (agent_steps cascade via FK)",
+        "API-Steps-Reorder: POST /steps-reorder recebe array de step_ids em nova ordem, UPDATE agent_steps_order para cada",
+        "API-ARV-List: GET /arv-list?agent_id= retorna agent_response_variables ORDER BY arv_order",
+        "API-ARV-Upsert: POST /arv-upsert INSERT ON CONFLICT (arv_agent_id, arv_variable_name) DO UPDATE",
+        "API-ARV-Delete: POST /arv-delete deleta por arv_id"
+      ]
+    },
+    {
+      "id": "PRD-28",
+      "title": "Frontend: Tela de Agentes com CRUD completo",
+      "priority": "high",
+      "status": "pending",
+      "description": "Nova rota /agents no TopMenu. Listagem de agentes com cards. Formulário completo de criação/edição em dialog ou página dedicada com 4 seções: Info Básica, Scripts/Templates, Variáveis de Resposta (tabela inline) e Steps (lista drag'n'drop). Somente Agents Admin e Master Admin podem criar/editar; demais perfis veem lista read-only com nome e descrição.",
+      "acceptance": [
+        "TopMenu: aba 'Agentes' visível para todos os perfis autenticados com tenant selecionado",
+        "Listagem: cards com agents_name, agents_description, badge Is Global, badge Is Close Agent",
+        "Botão 'Novo Agente' visível apenas para isAgentsAdmin ou isMaster",
+        "Formulário seção 1: Nome*, Descrição, Tipo resposta (select llm/math), É global (toggle), É agente fechamento (toggle), Min chars, Max chars, Descrição tipo dado, Dados a reportar, Regras extras",
+        "Formulário seção 2: textareas para Script set_data, Template payload API (JSON), Script formatação",
+        "Formulário seção 3: tabela de variáveis com campos nome, tipo (select string/number/usd_to_brl/json_flatten), label, ordem, sanitizar (bool); botão + Adicionar",
+        "Formulário seção 4: lista drag'n'drop de steps usando @dnd-kit/core; cada step tem Nome*, Método API (select GET/POST/PUT/DELETE/PATCH), Endpoint*, Headers (JSON), Payload (JSON), Pre SQL, Pre Script, Post Script, Post SQL; botão + Adicionar Step",
+        "Ao salvar: chama agents-create ou agents-update + steps-upsert para cada step + steps-reorder + arv-upsert para cada variável",
+        "Sub-tenant e Admin (pai) veem apenas nome e descrição, sem botão de edição"
+      ]
+    },
+    {
+      "id": "PRD-29",
+      "title": "N8N: APIs CRUD de Instâncias + Evolution API + Webhook Genérico",
+      "priority": "high",
+      "status": "done",
+      "description": "Criar 7 flows N8N para gestão de instâncias WhatsApp integradas ao Evolution API em https://evolution.toreply.me (auth: header apikey via $env.EVOLUTION_API_KEY). Ao criar instância, configura webhook fixo apontando para o N8N. Criar flow Webhook-Evolution-Router que recebe todos os eventos e roteia por instance_name para o API-instances-receptive existente.",
+      "acceptance": [
+        "API-Instances-List: GET /instances-list?tenant_id= retorna instâncias do tenant com status em tempo real via GET /instance/fetchInstances do Evolution",
+        "API-Instances-Create: POST /instances-create insere em instances + POST https://evolution.toreply.me/instance/create com instanceName, number, qrcode:true, webhook.url=https://api.toreply.me/webhook/evolution, webhook.events=[MESSAGES_UPSERT,CONNECTION_UPDATE,QRCODE_UPDATED,STATUS_INSTANCE]",
+        "API-Instances-Update: POST /instances-update atualiza campos no DB (instance_agent_selection_mode, instance_current_agent_id, instance_conversation_timeout_minutes, instance_only_auth, instance_no_auth_message)",
+        "API-Instances-Delete: POST /instances-delete chama DELETE https://evolution.toreply.me/instance/delete/{instanceName} + DELETE do DB",
+        "API-Instances-QRCode: GET /instances-qrcode?instance_name= chama GET https://evolution.toreply.me/instance/connect/{name} e retorna QR base64",
+        "API-Instances-Status: GET /instances-status?instance_name= chama GET https://evolution.toreply.me/instance/connectionState/{name}",
+        "Webhook-Evolution-Router: Webhook Trigger em POST /webhook/evolution; extrai $json.body.instance; SELECT FROM instances WHERE instance_name = $instance; roteia MESSAGES_UPSERT para API-instances-receptive; roteia CONNECTION_UPDATE/QRCODE_UPDATED para atualizar status no DB"
+      ]
+    },
+    {
+      "id": "PRD-30",
+      "title": "Frontend: Tela de Instâncias WhatsApp",
+      "priority": "high",
+      "status": "done",
+      "description": "Nova rota /instances visível apenas para admin e agents_admin. Tabela/cards com instâncias do tenant. Dialog de criação/edição com todos os campos. Dialog de QR Code com polling de status a cada 3s até conectar. Ações por instância: editar, ver QR Code, excluir.",
+      "acceptance": [
+        "TopMenu: aba 'Instâncias' visível apenas para isAdmin ou isAgentsAdmin",
+        "Listagem: tabela com colunas Nome, Telefone, Status (badge active/inactive/blocked), Modo (fixed/dynamic), Conectado (bool)",
+        "Botão 'Nova Instância' abre Dialog com campos: Nome*, Telefone*, Status (select), Modo agente (select fixed/dynamic), Agente atual (select, visível se modo=fixed, lista agentes do tenant), Timeout conversa (min), Somente autenticados (toggle), Mensagem sem autenticação (textarea)",
+        "Botão 'Ver QR Code': abre Dialog com <img> mostrando QR base64; polling GET /instances-status a cada 3s; quando status='open' exibe 'Conectado!' e fecha",
+        "Botão 'Editar': preenche Dialog com dados atuais da instância",
+        "Botão 'Excluir': AlertDialog de confirmação → DELETE /instances-delete",
+        "Loading states em todos os botões durante operações assíncronas"
+      ]
+    },
+    {
+      "id": "PRD-31",
+      "title": "N8N: APIs Conversas e Mensagens + Teste WebSocket",
+      "priority": "medium",
+      "status": "done",
+      "description": "Criar API-Conversations-List e API-Messages-List para alimentar a tela de conversas. Criar projeto de teste isolado para validar viabilidade do WebSocket Trigger nativo do N8N. Se viável, criar flow WS-Conversations-Notify para push de novas mensagens em tempo real.",
+      "acceptance": [
+        "API-Conversations-List: GET /conversations-list?tenant_id=&page=&limit= retorna array com conversation_id, contact_name, contact_phone, last_message (conteúdo), last_message_at, conversation_status, channel via JOIN conversations + contacts + (messages_ai UNION messages_contact)",
+        "API-Messages-List: GET /messages-list?conversation_id=&page=&limit= retorna mensagens ordenadas por date_creation ASC com campos: id, sender (ai|contact), content, date_creation, status",
+        "Projeto de teste WebSocket: flow N8N com WebSocket Trigger + cliente HTML/JS de teste que conecta e recebe eventos",
+        "Se WebSocket funcionar: WS-Conversations-Notify recebe POST interno com conversation_id + nova mensagem e emite via WS para subscribers daquela conversation_id",
+        "Resultado do teste documentado em progress.txt (funciona sim/não + abordagem escolhida)"
+      ]
+    },
+    {
+      "id": "PRD-32",
+      "title": "Frontend: Tela de Conversas/Mensagens",
+      "priority": "medium",
+      "status": "done",
+      "description": "Nova rota /conversations visível para todos os perfis. Layout estilo WhatsApp Web: painel esquerdo com lista de conversas (nome, preview, horário) e painel direito com balões de mensagem (contato à direita, AI à esquerda). Real-time via WebSocket se PRD-31 validou, senão polling a cada 5s.",
+      "acceptance": [
+        "TopMenu: aba 'Conversas' visível para todos os perfis autenticados",
+        "Painel esquerdo (w-1/3): lista de conversas com nome do contato, preview da última mensagem truncado, horário da última mensagem, badge de status (active/closed)",
+        "Input de busca no topo do painel esquerdo filtra por nome do contato",
+        "Painel direito (w-2/3): cabeçalho com nome + telefone do contato; área de scroll com balões",
+        "Balão de contato: alinhado à esquerda, fundo cinza, texto da mensagem + horário",
+        "Balão de AI: alinhado à direita, fundo verde/azul, texto + horário",
+        "Ao selecionar conversa: carrega mensagens via API-Messages-List com scroll automático para o final",
+        "Real-time: se WebSocket disponível usa WS; senão polling GET /messages-list a cada 5s quando conversa selecionada",
+        "Estado vazio: 'Selecione uma conversa para ver as mensagens' no painel direito quando nenhuma selecionada"
+      ]
+    },
+    {
+      "id": "PRD-33",
+      "title": "Frontend + N8N: Tela de Contatos",
+      "priority": "medium",
+      "status": "done",
+      "status": "pending",
+      "description": "Nova rota /contacts com tabela read-only de contatos do tenant. N8N: API-Contacts-List com busca e paginação, filtrando contatos que têm conversas com o tenant informado.",
+      "acceptance": [
+        "API-Contacts-List: GET /contacts-list?tenant_id=&search=&page=&limit= retorna contacts via JOIN contacts + conversations WHERE conversation_tenant_id = $tenant_id, filtra por ILIKE em contacts_phone_number ou contacts_contact_name quando search != ''",
+        "TopMenu: aba 'Contatos' visível para todos os perfis autenticados",
+        "Tabela com colunas: ID, Nome, Telefone, Data Criação",
+        "Input de busca no topo filtra por nome ou telefone (query param search)",
+        "Paginação: 20 registros por página com controles Anterior/Próximo",
+        "Nenhuma ação de criar/editar/deletar disponível (read-only)",
+        "Estado vazio: 'Nenhum contato encontrado' quando sem resultados"
+      ]
+    },
+    {
+      "id": "PRD-34",
+      "title": "Números WhatsApp por Cliente (Frontend + N8N)",
+      "priority": "medium",
+      "status": "done",
+      "description": "Expandir a tela /clients com seção de 'Números WhatsApp Autorizados' por cliente filho. Permite ao tenant pai registrar os números de WhatsApp dos usuários do filho, seu external_id e nome interno — refletindo no sistema de autenticação do Unarag.",
+      "acceptance": [
+        "API-AuthPhones-List: GET /auth-phones-list?child_tenant_id= retorna registros de whatsapp_auth_phone_number WHERE tenant_id = $child_tenant_id",
+        "API-AuthPhones-Create: POST /auth-phones-create INSERT em whatsapp_auth_phone_number com fields: phone_number, instance_id, tenant_id, external_id, external_company_name",
+        "API-AuthPhones-Delete: POST /auth-phones-delete DELETE by whatsapp_auth_phone_number_id",
+        "clients/page.tsx: cada card/row de cliente filho tem botão 'Números WhatsApp' que abre Dialog",
+        "Dialog 'Números WhatsApp': tabela com colunas Número, Nome Interno (external_company_name), External ID; botão + Adicionar",
+        "Form adicionar: campo Número (tel), Nome Interno (text), External ID (text), Instância (select com instâncias do tenant pai)",
+        "Botão remover por linha com AlertDialog de confirmação"
+      ]
+    },
+    {
+      "id": "PRD-35",
+      "title": "Frontend: Página Device Authentication",
+      "priority": "high",
+      "status": "done",
+      "status": "pending",
+      "description": "Nova rota pública /device-authentication para autenticação do UnaragConsole. Login-only (sem registro), suporte a Google OAuth, checkbox de TOS. Captura connection_uid da query string e ao autenticar com sucesso faz POST para o UnaragAPI notificando a autenticação.",
+      "acceptance": [
+        "app/(auth)/device-authentication/page.tsx criado como rota pública (fora do layout protegido)",
+        "Página exibe título 'Autenticação de Dispositivo', campos email + senha, botão 'Entrar com Google'",
+        "Sem link ou botão de 'Criar conta' ou 'Registrar'",
+        "Checkbox 'Aceito os Termos de Serviço' obrigatório (link abre tos_url do system_settings)",
+        "connection_uid capturado via useSearchParams() da query string ?connection_uid=UID",
+        "Ao autenticar: usa AuthContext.login() existente para obter tenant_id e user_id",
+        "Após login bem-sucedido: POST para {device_api_url}/webhook/device-auth com body {tenant_id, user_id, connection_uid}",
+        "Exibe mensagem de sucesso: 'Autenticado com sucesso! Volte ao terminal do console.' sem redirecionar",
+        "Se connection_uid ausente na URL: exibe aviso 'Link inválido — connection_uid não encontrado'"
+      ]
+    },
+    {
+      "id": "PRD-36",
+      "title": "N8N + Frontend: Configuração de Bancos de Dados Locais (UnaragConsole)",
+      "priority": "medium",
+      "status": "done",
+      "description": "Permitir que admins configurem conexões com bancos de dados locais via toreply.me. N8N cria 6 flows para CRUD de local_db_configs (senha criptografada via N8N Crypto AES) e notificação ao UnaragConsole. Frontend adiciona aba 'Bancos Locais' em /settings.",
+      "acceptance": [
+        "API-LocalDB-List: GET /localdb-list?tenant_id= retorna local_db_configs (sem ldb_pass_enc)",
+        "API-LocalDB-Create: POST /localdb-create INSERT em local_db_configs; senha criptografada via n8n-nodes-base.crypto AES-256 antes de salvar; retorna ldb_db_uid",
+        "API-LocalDB-Update: POST /localdb-update UPDATE campos; re-encripta senha se fornecida",
+        "API-LocalDB-Delete: POST /localdb-delete DELETE by ldb_id",
+        "API-LocalDB-Get-By-Tenant: POST /localdb-get-by-tenant recebe tenant_id; retorna configs descriptografadas (para uso pelo UnaragConsole)",
+        "API-LocalDB-Notify: POST interno → POST para {device_api_url}/webhook/db-config com tenant_id, configs descriptografadas, db_uid",
+        "settings/page.tsx: nova aba 'Bancos Locais' visível para isAdmin ou isAgentsAdmin",
+        "Lista de DBs: tabela com nome, tipo, host, status (ativo/inativo)",
+        "Dialog criação: Nome*, Tipo (select postgres/mysql/sqlite/sqlserver/oracle)*, Host, Porta, Usuário, Senha (masked), Nome do Banco*",
+        "Ao criar/editar: chama API-LocalDB-Create/Update + dispara API-LocalDB-Notify"
+      ]
+    },
+    {
+      "id": "PRD-37",
+      "title": "N8N: Query Routing UnaragConsole (Abstração de Queries Locais)",
+      "priority": "medium",
+      "status": "done",
+      "description": "Criar 4 flows N8N que formam a camada de abstração para execução de queries em bancos de dados locais via UnaragConsole. O flow Querying-Local-DB é a API que outras APIs do sistema chamarão para obter dados do DB local, com loop de polling e timeout.",
+      "acceptance": [
+        "API-Device-Tenant-Exists: POST /device/tenant-exists recebe {tenant_id}; faz POST para {device_api_url}/webhook/tenant-exist; retorna {exists: bool}",
+        "API-Device-Query-Request: POST /device/query-request recebe {tenant_id, db_uid, query}; INSERT em local_query_orders com status=pending; faz POST para {device_api_url}/webhook/query-request com {query, tenant_id, db_uid, order_uid}; retorna {order_uid}",
+        "API-Device-Query-Response: POST /device/query-response recebe {order_uid, result?, error?}; UPDATE local_query_orders SET lqo_status=completed|error, lqo_result=$result, lqo_date_resolved=NOW(); retorna 200 OK",
+        "API-Device-Querying-Local-DB: POST /device/querying-local-db recebe {tenant_id, db_uid, query}; (1) chama API-Device-Tenant-Exists: se não existe retorna erro; (2) chama API-Device-Query-Request: obtém order_uid; (3) loop até 30x: Wait 1s + SELECT local_query_orders WHERE lqo_order_uid=$order_uid; se status=completed retorna lqo_result; se status=error retorna erro; (4) após 30 tentativas: UPDATE status=timeout + retorna erro timeout"
+      ]
+    },
+    {
+      "id": "PRD-38",
+      "title": "Settings: Configuração URL UnaragAPI (Master Admin)",
+      "priority": "low",
+      "status": "done",
+      "description": "Adicionar em /settings (somente master admin) seção 'Integração UnaragAPI' com campo editável para a URL base do UnaragAPI (chave device_api_url em system_settings). Botão de teste de conectividade. Criar API-Settings-Update no N8N se não existir.",
+      "acceptance": [
+        "API-Settings-Update: POST /settings-update recebe {key, value}; UPSERT em system_settings; requer user_is_master_admin=true; retorna 200",
+        "API-Settings-Get: GET /settings-get?key= retorna setting_value; se key='device_api_url' não requer master_admin (qualquer auth pode ler)",
+        "settings/page.tsx: nova seção 'Integração UnaragAPI' visível apenas para isMaster",
+        "Campo 'URL do UnaragAPI': Input com valor atual de device_api_url; botão 'Salvar' chama API-Settings-Update",
+        "Botão 'Testar Conexão': chama API-Device-Tenant-Exists com tenant_id atual; exibe 'Conectado!' ou 'Sem resposta — verifique a URL'",
+        "Placeholder: 'https://device.toreply.me'"
+      ]
     }
   ]
 }

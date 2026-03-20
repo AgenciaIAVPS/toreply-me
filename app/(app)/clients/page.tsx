@@ -13,9 +13,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt, UserPlus, Unlink2 } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Loader2, Building2, Lock, Unlock, Plus, Pencil, CreditCard, Receipt, UserPlus, Unlink2, Phone, Trash2 } from 'lucide-react'
 
-type DialogMode = 'edit' | 'credits' | 'fees' | 'subscription' | 'unlink' | null
+type DialogMode = 'edit' | 'credits' | 'fees' | 'subscription' | 'unlink' | 'whatsapp' | null
+
+type AuthPhone = {
+  id: number
+  whatsapp_phone_number: string
+  external_company_name: string | null
+  external_id: string | null
+  instance_id: number | null
+  instance_name: string | null
+}
 
 export default function ClientsPage() {
   const router = useRouter()
@@ -54,6 +64,14 @@ export default function ClientsPage() {
   const [subMonth, setSubMonth] = useState('')
   const [subAmount, setSubAmount] = useState('')
 
+  // WhatsApp phones
+  const [authPhones, setAuthPhones] = useState<AuthPhone[]>([])
+  const [phonesLoading, setPhonesLoading] = useState(false)
+  const [newPhone, setNewPhone] = useState('')
+  const [newPhoneCompany, setNewPhoneCompany] = useState('')
+  const [newPhoneExtId, setNewPhoneExtId] = useState('')
+  const [addingPhone, setAddingPhone] = useState(false)
+
   const canAccess = !!(isMaster || isParent)
 
   const generateClientInvite = async () => {
@@ -86,9 +104,54 @@ export default function ClientsPage() {
     load()
   }, [selectedTenant])
 
+  const loadAuthPhones = async (child: RelChildSummary) => {
+    if (!selectedTenant) return
+    setPhonesLoading(true)
+    try {
+      const res = await api.get<{ phones: AuthPhone[] }>(
+        `/authphones-list?parent_tenant_id=${selectedTenant.tenant_id}&child_tenant_id=${child.child_tenant_id}`
+      )
+      setAuthPhones(res.phones || [])
+    } catch { toast.error('Erro ao carregar números') }
+    finally { setPhonesLoading(false) }
+  }
+
+  const addPhone = async () => {
+    if (!active || !selectedTenant || !newPhone.trim()) return
+    setAddingPhone(true)
+    try {
+      await api.post('/authphones-create', {
+        parent_tenant_id: selectedTenant.tenant_id,
+        child_tenant_id: active.child_tenant_id,
+        phone_number: newPhone.trim(),
+        external_company_name: newPhoneCompany || null,
+        external_id: newPhoneExtId || null,
+      })
+      toast.success('Número adicionado')
+      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId('')
+      loadAuthPhones(active)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar número')
+    } finally { setAddingPhone(false) }
+  }
+
+  const deletePhone = async (phoneId: number) => {
+    if (!selectedTenant) return
+    try {
+      await api.post('/authphones-delete', { parent_tenant_id: selectedTenant.tenant_id, phone_id: phoneId })
+      toast.success('Número removido')
+      if (active) loadAuthPhones(active)
+    } catch { toast.error('Erro ao remover número') }
+  }
+
   const openDialog = (child: RelChildSummary, mode: DialogMode) => {
     setActive(child)
     setDialogMode(mode)
+    if (mode === 'whatsapp') {
+      setAuthPhones([])
+      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId('')
+      loadAuthPhones(child)
+    }
     if (mode === 'edit') {
       setEditName(child.rel_name ?? child.child_tenant_name)
       setEditDesc(child.rel_description ?? '')
@@ -280,6 +343,9 @@ export default function ClientsPage() {
                     <Button variant="ghost" size="icon" title={child.rel_is_blocked ? 'Desbloquear' : 'Bloquear'} onClick={() => toggleBlock(child)}>
                       {child.rel_is_blocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                     </Button>
+                    <Button variant="ghost" size="icon" title="Números WhatsApp" onClick={() => openDialog(child, 'whatsapp')}>
+                      <Phone className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" title="Desvincular" onClick={() => openDialog(child, 'unlink')}>
                       <Unlink2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -379,6 +445,72 @@ export default function ClientsPage() {
               {saving ? 'Removendo...' : 'Desvincular'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: WhatsApp Numbers */}
+      <Dialog open={dialogMode === 'whatsapp'} onOpenChange={open => !open && closeDialog()}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Números WhatsApp — {active?.rel_name ?? active?.child_tenant_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">Números autorizados a interagir com este cliente via WhatsApp.</p>
+
+            {phonesLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+              </div>
+            ) : authPhones.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum número cadastrado.</p>
+            ) : (
+              <div className="space-y-2">
+                {authPhones.map(p => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 border rounded-md px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-mono font-medium">{p.whatsapp_phone_number}</p>
+                      <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                        {p.external_company_name && <span>{p.external_company_name}</span>}
+                        {p.external_id && <span className="font-mono">{p.external_id}</span>}
+                        {p.instance_name && <span>@ {p.instance_name}</span>}
+                      </div>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 size={13} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover número</AlertDialogTitle>
+                          <AlertDialogDescription>Remover o número <strong>{p.whatsapp_phone_number}</strong>?</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deletePhone(p.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-sm font-medium">Adicionar número</p>
+              <div className="space-y-2">
+                <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="5511999999999" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={newPhoneCompany} onChange={e => setNewPhoneCompany(e.target.value)} placeholder="Nome empresa (opcional)" />
+                  <Input value={newPhoneExtId} onChange={e => setNewPhoneExtId(e.target.value)} placeholder="External ID (opcional)" />
+                </div>
+                <Button size="sm" onClick={addPhone} disabled={addingPhone || !newPhone.trim()}>
+                  {addingPhone ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Adicionando...</> : <><Plus className="h-3 w-3 mr-1" />Adicionar</>}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/contexts/TenantContext'
@@ -12,13 +12,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Loader2, Plus, Trash2, Database } from 'lucide-react'
+
+interface LocalDb {
+  ldb_id: string
+  ldb_name: string
+  ldb_type: string
+  ldb_host: string | null
+  ldb_port: number | null
+  ldb_user: string | null
+  ldb_database: string | null
+  ldb_is_active: boolean
+}
+
+const DB_TYPES = ['postgres', 'mysql', 'sqlite', 'sqlserver', 'oracle']
+const EMPTY_FORM = { ldb_name: '', ldb_type: 'postgres', ldb_host: '', ldb_port: '', ldb_user: '', ldb_pass: '', ldb_database: '' }
 
 export default function SettingsPage() {
   const router = useRouter()
   const { user, logout, refreshUser } = useAuth()
   const { selectedTenant, selectedParent, isSubTenant } = useTenant()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
+  const canManageLocalDbs = isAdmin || isAgentsAdmin || isMaster
 
   // Empresa form state
   const [tenantName, setTenantName] = useState('')
@@ -31,6 +51,7 @@ export default function SettingsPage() {
   // Master settings state
   const [masterSettings, setMasterSettings] = useState<Record<string, string>>({})
   const [savingMaster, setSavingMaster] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
 
   const MASTER_SETTINGS = [
     { key: 'default_ai_multiplier', label: 'Multiplicador de custo IA (padrão)', placeholder: '7.0' },
@@ -41,6 +62,15 @@ export default function SettingsPage() {
   // Conta delete state
   const [confirmText, setConfirmText] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
+
+  // Local DBs state
+  const [localDbs, setLocalDbs] = useState<LocalDb[]>([])
+  const [loadingDbs, setLoadingDbs] = useState(false)
+  const [dbDialog, setDbDialog] = useState(false)
+  const [editingDb, setEditingDb] = useState<LocalDb | null>(null)
+  const [dbForm, setDbForm] = useState(EMPTY_FORM)
+  const [savingDb, setSavingDb] = useState(false)
+  const [deletingDb, setDeletingDb] = useState<string | null>(null)
 
   useEffect(() => {
     if (selectedTenant) {
@@ -63,6 +93,17 @@ export default function SettingsPage() {
       .catch(() => {})
   }, [isMaster])
 
+  const loadLocalDbs = useCallback(() => {
+    if (!selectedTenant || !canManageLocalDbs) return
+    setLoadingDbs(true)
+    api.get<{ local_dbs: LocalDb[] }>(`/localdb-list?tenant_id=${selectedTenant.tenant_id}`)
+      .then(r => setLocalDbs(r.local_dbs || []))
+      .catch(() => toast.error('Erro ao carregar bancos locais'))
+      .finally(() => setLoadingDbs(false))
+  }, [selectedTenant, canManageLocalDbs])
+
+  useEffect(() => { loadLocalDbs() }, [loadLocalDbs])
+
   const saveMasterSetting = async (key: string, value: string) => {
     setSavingMaster(true)
     try {
@@ -72,6 +113,83 @@ export default function SettingsPage() {
       toast.error('Erro ao salvar')
     } finally {
       setSavingMaster(false)
+    }
+  }
+
+  const testUnaragConnection = async () => {
+    if (!selectedTenant) return
+    setTestingConnection(true)
+    try {
+      await api.post('/device/tenant-exists', { tenant_id: selectedTenant.tenant_id })
+      toast.success('Conexão OK — UnaragConsole respondeu')
+    } catch {
+      toast.error('Sem resposta do UnaragConsole')
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+
+  const openCreateDb = () => {
+    setEditingDb(null)
+    setDbForm(EMPTY_FORM)
+    setDbDialog(true)
+  }
+
+  const openEditDb = (db: LocalDb) => {
+    setEditingDb(db)
+    setDbForm({
+      ldb_name: db.ldb_name,
+      ldb_type: db.ldb_type,
+      ldb_host: db.ldb_host || '',
+      ldb_port: db.ldb_port?.toString() || '',
+      ldb_user: db.ldb_user || '',
+      ldb_pass: '',
+      ldb_database: db.ldb_database || '',
+    })
+    setDbDialog(true)
+  }
+
+  const saveDb = async () => {
+    if (!selectedTenant) return
+    if (!dbForm.ldb_name || !dbForm.ldb_type) {
+      toast.error('Nome e tipo são obrigatórios')
+      return
+    }
+    setSavingDb(true)
+    try {
+      const payload = {
+        ...dbForm,
+        tenant_id: selectedTenant.tenant_id,
+        ldb_port: dbForm.ldb_port ? Number(dbForm.ldb_port) : null,
+        ...(editingDb ? { ldb_id: editingDb.ldb_id } : {}),
+      }
+      if (editingDb) {
+        await api.post('/localdb-update', payload)
+        toast.success('Banco atualizado!')
+      } else {
+        await api.post('/localdb-create', payload)
+        toast.success('Banco criado!')
+      }
+      setDbDialog(false)
+      loadLocalDbs()
+    } catch {
+      toast.error('Erro ao salvar banco')
+    } finally {
+      setSavingDb(false)
+    }
+  }
+
+  const deleteDb = async (ldbId: string) => {
+    if (!selectedTenant) return
+    setDeletingDb(ldbId)
+    try {
+      await api.post('/localdb-delete', { ldb_id: ldbId, tenant_id: selectedTenant.tenant_id })
+      toast.success('Banco removido')
+      setLocalDbs(prev => prev.filter(d => d.ldb_id !== ldbId))
+    } catch {
+      toast.error('Erro ao remover banco')
+    } finally {
+      setDeletingDb(null)
     }
   }
 
@@ -121,6 +239,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
           <TabsTrigger value="conta">Conta</TabsTrigger>
+          {canManageLocalDbs && <TabsTrigger value="localdb">Bancos Locais</TabsTrigger>}
           {isMaster && <TabsTrigger value="master">Sistema</TabsTrigger>}
         </TabsList>
 
@@ -237,6 +356,152 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {canManageLocalDbs && (
+          <TabsContent value="localdb" className="mt-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Bancos de Dados Locais</CardTitle>
+                    <CardDescription className="mt-1">Conexões de banco registradas para o UnaragConsole.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={openCreateDb}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingDbs ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                  </div>
+                ) : localDbs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                    <Database className="h-8 w-8 mb-2 opacity-30" />
+                    <p className="text-sm">Nenhum banco configurado.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {localDbs.map(db => (
+                      <div
+                        key={db.ldb_id}
+                        className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/40 cursor-pointer"
+                        onClick={() => openEditDb(db)}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{db.ldb_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {db.ldb_type}{db.ldb_host ? ` · ${db.ldb_host}` : ''}{db.ldb_database ? `/${db.ldb_database}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant={db.ldb_is_active ? 'default' : 'secondary'} className="text-xs">
+                            {db.ldb_is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            disabled={deletingDb === db.ldb_id}
+                            onClick={e => { e.stopPropagation(); deleteDb(db.ldb_id) }}
+                          >
+                            {deletingDb === db.ldb_id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <Trash2 className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Create / Edit Dialog */}
+            <Dialog open={dbDialog} onOpenChange={setDbDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editingDb ? 'Editar Banco' : 'Novo Banco de Dados'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="space-y-1">
+                    <Label>Nome *</Label>
+                    <Input
+                      value={dbForm.ldb_name}
+                      onChange={e => setDbForm(f => ({ ...f, ldb_name: e.target.value }))}
+                      placeholder="Ex: ERP Principal"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Tipo *</Label>
+                    <Select value={dbForm.ldb_type} onValueChange={v => setDbForm(f => ({ ...f, ldb_type: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DB_TYPES.map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2 space-y-1">
+                      <Label>Host</Label>
+                      <Input
+                        value={dbForm.ldb_host}
+                        onChange={e => setDbForm(f => ({ ...f, ldb_host: e.target.value }))}
+                        placeholder="localhost"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Porta</Label>
+                      <Input
+                        type="number"
+                        value={dbForm.ldb_port}
+                        onChange={e => setDbForm(f => ({ ...f, ldb_port: e.target.value }))}
+                        placeholder="5432"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Usuário</Label>
+                    <Input
+                      value={dbForm.ldb_user}
+                      onChange={e => setDbForm(f => ({ ...f, ldb_user: e.target.value }))}
+                      placeholder="postgres"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>{editingDb ? 'Senha (deixe vazio para não alterar)' : 'Senha'}</Label>
+                    <Input
+                      type="password"
+                      value={dbForm.ldb_pass}
+                      onChange={e => setDbForm(f => ({ ...f, ldb_pass: e.target.value }))}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Nome do banco</Label>
+                    <Input
+                      value={dbForm.ldb_database}
+                      onChange={e => setDbForm(f => ({ ...f, ldb_database: e.target.value }))}
+                      placeholder="mydb"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDbDialog(false)}>Cancelar</Button>
+                  <Button onClick={saveDb} disabled={savingDb}>
+                    {savingDb ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
+
         {isMaster && (
           <TabsContent value="master" className="mt-4 space-y-4">
             <Card>
@@ -297,6 +562,42 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Integração UnaragAPI</CardTitle>
+                <CardDescription>URL base do UnaragConsole (dispositivo local do cliente).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>URL do UnaragAPI</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={masterSettings['device_api_url'] ?? ''}
+                      onChange={e => setMasterSettings(s => ({ ...s, device_api_url: e.target.value }))}
+                      placeholder="https://device.toreply.me"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={savingMaster}
+                      onClick={() => saveMasterSetting('device_api_url', masterSettings['device_api_url'] ?? '')}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={testingConnection}
+                  onClick={testUnaragConnection}
+                >
+                  {testingConnection ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : 'Testar Conexão'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
