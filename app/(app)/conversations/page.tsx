@@ -51,6 +51,7 @@ export default function ConversationsPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [convMeta, setConvMeta] = useState<{ contact_name: string; contact_phone: string | null; conversation_status: string } | null>(null)
+  const [newConvIds, setNewConvIds] = useState<Set<number>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -100,6 +101,11 @@ export default function ConversationsPage() {
     setMessages([])
     setConvMeta(null)
     loadMessages(conv)
+    setNewConvIds(prev => {
+      const updated = new Set(prev)
+      updated.delete(conv.conversation_id)
+      return updated
+    })
   }
 
   // Handler WebSocket — processa mensagens recebidas em tempo real
@@ -120,6 +126,7 @@ export default function ConversationsPage() {
       const exists = conversationsRef.current.some(c => c.conversation_id === wsMsg.conversation_id)
       if (!exists) {
         loadConversations()
+        setNewConvIds(prev => new Set([...prev, wsMsg.conversation_id]))
         return // loadConversations vai atualizar a lista completa
       }
 
@@ -226,7 +233,14 @@ export default function ConversationsPage() {
                   </p>
                 )}
                 <div className="flex items-center justify-between mt-1.5 gap-2">
-                  <StatusBadge status={conv.conversation_status} />
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={conv.conversation_status} />
+                    {newConvIds.has(conv.conversation_id) && (
+                      <Badge className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-200 shrink-0 px-1.5 py-0 animate-pulse">
+                        Nova
+                      </Badge>
+                    )}
+                  </div>
                   {conv.unread_count > 0 && (
                     <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-medium">
                       {conv.unread_count}
