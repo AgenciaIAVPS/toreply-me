@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Loader2, Search, MessageCircle, Bot, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useWebSocket, WsStatus } from '@/hooks/useWebSocket'
 
 function formatTime(dateStr: string | null) {
   if (!dateStr) return ''
@@ -27,6 +28,18 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className="text-xs">Arquivada</Badge>
 }
 
+const wsDotClass: Record<WsStatus, string> = {
+  connecting:   'bg-yellow-400 animate-pulse',
+  connected:    'bg-green-500',
+  disconnected: 'bg-red-500',
+}
+
+const wsLabel: Record<WsStatus, string> = {
+  connecting:   'Conectando...',
+  connected:    'Tempo real ativo',
+  disconnected: 'Desconectado',
+}
+
 export default function ConversationsPage() {
   const { selectedTenant } = useTenant()
 
@@ -39,8 +52,14 @@ export default function ConversationsPage() {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [convMeta, setConvMeta] = useState<{ contact_name: string; contact_phone: string | null; conversation_status: string } | null>(null)
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Ref para acompanhar a conversa selecionada sem stale closure no handler WS
+  const selectedRef = useRef<Conversation | null>(null)
+  useEffect(() => { selectedRef.current = selected }, [selected])
+
+  // WebSocket — substitui o polling de 5s
+  const { status: wsStatus, lastMessage } = useWebSocket(process.env.NEXT_PUBLIC_N8N_WS_URL)
 
   const loadConversations = useCallback(() => {
     if (!selectedTenant) return
@@ -79,13 +98,63 @@ export default function ConversationsPage() {
     loadMessages(conv)
   }
 
-  // Polling: reload messages every 5s when a conversation is selected
+  // Handler WebSocket — processa mensagens recebidas em tempo real
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current)
-    if (!selected || !selectedTenant) return
-    pollRef.current = setInterval(() => loadMessages(selected), 5000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [selected, selectedTenant, loadMessages])
+    if (!lastMessage || lastMessage.type !== 'new_messages') return
+
+    const incoming = (lastMessage.data || []) as Array<{
+      messages_id: number
+      messages_content: string
+      messages_sender: string
+      messages_date_creation: string
+      message_status: string
+      conversation_id: number
+    }>
+
+    incoming.forEach(wsMsg => {
+      // 1. Atualizar a lista de conversas: last_message, timestamp, unread_count, re-sort
+      setConversations(prev => {
+        const updated = prev.map(c =>
+          c.conversation_id === wsMsg.conversation_id
+            ? {
+                ...c,
+                last_message: wsMsg.messages_content,
+                last_message_sender: wsMsg.messages_sender as 'ai' | 'contact',
+                conversation_last_message_at: wsMsg.messages_date_creation,
+                unread_count:
+                  selectedRef.current?.conversation_id === wsMsg.conversation_id
+                    ? 0
+                    : c.unread_count + 1,
+              }
+            : c
+        )
+        // Reordenar: conversa com mensagem mais recente no topo
+        return updated.sort(
+          (a, b) =>
+            new Date(b.conversation_last_message_at || 0).getTime() -
+            new Date(a.conversation_last_message_at || 0).getTime()
+        )
+      })
+
+      // 2. Se for a conversa aberta, fazer append (deduplicado)
+      if (selectedRef.current?.conversation_id === wsMsg.conversation_id) {
+        setMessages(prev => {
+          const ids = new Set(prev.map(m => m.messages_id))
+          if (ids.has(wsMsg.messages_id)) return prev
+          return [
+            ...prev,
+            {
+              messages_id: wsMsg.messages_id,
+              messages_sender: wsMsg.messages_sender as 'ai' | 'contact',
+              messages_content: wsMsg.messages_content,
+              message_status: wsMsg.message_status,
+              messages_date_creation: wsMsg.messages_date_creation,
+            },
+          ]
+        })
+      }
+    })
+  }, [lastMessage])
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -169,14 +238,21 @@ export default function ConversationsPage() {
         ) : (
           <>
             {/* Header */}
-            <div className="border-b px-4 py-3 flex items-center gap-3">
-              <div className="min-w-0">
-                <p className="font-medium text-sm">{convMeta?.contact_name || selected.contact_name}</p>
-                {(convMeta?.contact_phone || selected.contact_phone) && (
-                  <p className="text-xs text-muted-foreground">{convMeta?.contact_phone || selected.contact_phone}</p>
-                )}
+            <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{convMeta?.contact_name || selected.contact_name}</p>
+                  {(convMeta?.contact_phone || selected.contact_phone) && (
+                    <p className="text-xs text-muted-foreground">{convMeta?.contact_phone || selected.contact_phone}</p>
+                  )}
+                </div>
+                {convMeta && <StatusBadge status={convMeta.conversation_status} />}
               </div>
-              {convMeta && <StatusBadge status={convMeta.conversation_status} />}
+              {/* Indicador de status WebSocket */}
+              <div className="flex items-center gap-1.5 shrink-0" title={wsLabel[wsStatus]}>
+                <span className={cn('w-2 h-2 rounded-full', wsDotClass[wsStatus])} />
+                <span className="text-[10px] text-muted-foreground hidden sm:inline">{wsLabel[wsStatus]}</span>
+              </div>
             </div>
 
             {/* Messages */}
