@@ -58,6 +58,10 @@ export default function ConversationsPage() {
   const selectedRef = useRef<Conversation | null>(null)
   useEffect(() => { selectedRef.current = selected }, [selected])
 
+  // Ref para acompanhar lista de conversas sem stale closure no handler WS
+  const conversationsRef = useRef<Conversation[]>([])
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
+
   // WebSocket — substitui o polling de 5s
   const { status: wsStatus, lastMessage } = useWebSocket(process.env.NEXT_PUBLIC_N8N_WS_URL)
 
@@ -112,6 +116,13 @@ export default function ConversationsPage() {
     }>
 
     incoming.forEach(wsMsg => {
+      // 0. Se conversation_id não existe na lista → nova conversa → re-fetch
+      const exists = conversationsRef.current.some(c => c.conversation_id === wsMsg.conversation_id)
+      if (!exists) {
+        loadConversations()
+        return // loadConversations vai atualizar a lista completa
+      }
+
       // 1. Atualizar a lista de conversas: last_message, timestamp, unread_count, re-sort
       setConversations(prev => {
         const updated = prev.map(c =>
