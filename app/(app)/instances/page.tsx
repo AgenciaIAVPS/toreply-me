@@ -186,14 +186,26 @@ export default function InstancesPage() {
     setQrOpen(true)
     setQrLoading(true)
     try {
-      const res = await api.get<{ qrcode: string | { base64?: string } }>(`/instances-qrcode?tenant_id=${selectedTenant.tenant_id}&instance_id=${inst.instance_id}`)
+      const res = await api.get<unknown>(`/instances-qrcode?tenant_id=${selectedTenant.tenant_id}&instance_id=${inst.instance_id}`)
       let qr: string | null = null
-      if (res.qrcode && typeof res.qrcode === 'object') {
-        // Evolution API may return { base64: "data:image/png;base64,..." }
-        qr = (res.qrcode as { base64?: string }).base64 || null
-      } else if (typeof res.qrcode === 'string' && res.qrcode) {
-        qr = res.qrcode
+
+      // Evolution API returns an array: [{ base64: "data:image/png;base64,...", code: "...", ... }]
+      if (Array.isArray(res) && res.length > 0) {
+        const item = res[0] as { base64?: string; code?: string }
+        qr = item.base64 || null
+      } else if (res && typeof res === 'object') {
+        const obj = res as { qrcode?: string | { base64?: string }; base64?: string }
+        if (typeof obj.base64 === 'string' && obj.base64) {
+          qr = obj.base64
+        } else if (obj.qrcode && typeof obj.qrcode === 'object') {
+          qr = (obj.qrcode as { base64?: string }).base64 || null
+        } else if (typeof obj.qrcode === 'string' && obj.qrcode) {
+          qr = obj.qrcode
+        }
+      } else if (typeof res === 'string' && res) {
+        qr = res
       }
+
       setQrCode(qr)
     } catch {
       toast.error('Erro ao obter QR Code')
