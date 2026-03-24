@@ -29,14 +29,18 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path: str
     // Read body as text to avoid streaming issues
     const resText = await res.text()
 
-    // For error responses, return diagnostic JSON
+    // For error responses, try to extract a meaningful message from upstream
     if (!res.ok) {
+      let upstreamMessage: string | undefined
+      try {
+        const upstreamJson = JSON.parse(resText)
+        upstreamMessage = upstreamJson?.message || upstreamJson?.error
+      } catch { /* ignore */ }
       return NextResponse.json(
         {
+          message: upstreamMessage || `Erro ${res.status}`,
           error: 'upstream_error',
           status: res.status,
-          target,
-          method: req.method,
           upstream_body: resText.slice(0, 1000),
         },
         { status: res.status }

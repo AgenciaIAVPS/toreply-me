@@ -21,7 +21,6 @@ import { Plus, Pencil, Trash2, Loader2, QrCode, Wifi, WifiOff, Smartphone, Refre
 type InstanceForm = {
   instance_name: string
   instance_phone_number: string
-  instance_channel: 'whatsapp' | 'widget'
   instance_agent_selection_mode: 'fixed' | 'dynamic'
   instance_current_agent_id: string
   instance_conversation_timeout_minutes: string
@@ -32,7 +31,6 @@ type InstanceForm = {
 const defaultForm: InstanceForm = {
   instance_name: '',
   instance_phone_number: '',
-  instance_channel: 'whatsapp',
   instance_agent_selection_mode: 'fixed',
   instance_current_agent_id: '',
   instance_conversation_timeout_minutes: '120',
@@ -55,12 +53,14 @@ function StatusBadge({ instance }: { instance: Instance }) {
 
 export default function InstancesPage() {
   const { user } = useAuth()
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, isSubTenant } = useTenant()
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
-  const isMaster = !!(user?.user_is_master_admin && selectedTenant?.tenant_is_master)
-  const canManage = isAdmin || isAgentsAdmin || isMaster
+  const isMasterAdmin = !!user?.user_is_master_admin
+  const canManage = isSubTenant
+    ? (isAdmin || isMasterAdmin)
+    : (isAdmin || isAgentsAdmin || isMasterAdmin)
 
   const [instances, setInstances] = useState<Instance[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
@@ -109,7 +109,6 @@ export default function InstancesPage() {
     setForm({
       instance_name: inst.instance_name,
       instance_phone_number: inst.instance_phone_number || '',
-      instance_channel: inst.instance_channel,
       instance_agent_selection_mode: inst.instance_agent_selection_mode,
       instance_current_agent_id: inst.instance_current_agent_id?.toString() || '',
       instance_conversation_timeout_minutes: inst.instance_conversation_timeout_minutes.toString(),
@@ -128,7 +127,6 @@ export default function InstancesPage() {
         tenant_id: selectedTenant.tenant_id,
         instance_name: form.instance_name,
         instance_phone_number: form.instance_phone_number || null,
-        instance_channel: form.instance_channel,
         instance_agent_selection_mode: form.instance_agent_selection_mode,
         instance_current_agent_id: form.instance_current_agent_id ? parseInt(form.instance_current_agent_id) : null,
         instance_conversation_timeout_minutes: parseInt(form.instance_conversation_timeout_minutes) || 120,
@@ -188,8 +186,15 @@ export default function InstancesPage() {
     setQrOpen(true)
     setQrLoading(true)
     try {
-      const res = await api.get<{ qrcode: string }>(`/instances-qrcode?tenant_id=${selectedTenant.tenant_id}&instance_id=${inst.instance_id}`)
-      setQrCode(res.qrcode || null)
+      const res = await api.get<{ qrcode: string | { base64?: string } }>(`/instances-qrcode?tenant_id=${selectedTenant.tenant_id}&instance_id=${inst.instance_id}`)
+      let qr: string | null = null
+      if (res.qrcode && typeof res.qrcode === 'object') {
+        // Evolution API may return { base64: "data:image/png;base64,..." }
+        qr = (res.qrcode as { base64?: string }).base64 || null
+      } else if (typeof res.qrcode === 'string' && res.qrcode) {
+        qr = res.qrcode
+      }
+      setQrCode(qr)
     } catch {
       toast.error('Erro ao obter QR Code')
     } finally {
@@ -332,28 +337,15 @@ export default function InstancesPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Canal</Label>
-                <Select value={form.instance_channel} onValueChange={v => setForm(f => ({ ...f, instance_channel: v as 'whatsapp' | 'widget' }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="widget">Widget</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Modo de agente</Label>
-                <Select value={form.instance_agent_selection_mode} onValueChange={v => setForm(f => ({ ...f, instance_agent_selection_mode: v as 'fixed' | 'dynamic' }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">Fixo</SelectItem>
-                    <SelectItem value="dynamic">Dinâmico</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1">
+              <Label>Modo de agente</Label>
+              <Select value={form.instance_agent_selection_mode} onValueChange={v => setForm(f => ({ ...f, instance_agent_selection_mode: v as 'fixed' | 'dynamic' }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixo</SelectItem>
+                  <SelectItem value="dynamic">Dinâmico</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {form.instance_agent_selection_mode === 'fixed' && (
@@ -442,7 +434,13 @@ export default function InstancesPage() {
                 <div className="border rounded-lg p-2 bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                    src={
+                      qrCode.startsWith('data:')
+                        ? qrCode
+                        : qrCode.startsWith('<svg') || qrCode.startsWith('<?xml')
+                          ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrCode)}`
+                          : `data:image/png;base64,${qrCode}`
+                    }
                     alt="QR Code WhatsApp"
                     className="w-56 h-56 object-contain"
                   />

@@ -151,7 +151,7 @@ export default function UsersPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="agents_admin">Agents Admin</SelectItem>
+                              {isMaster && <SelectItem value="agents_admin">Agents Admin</SelectItem>}
                               <SelectItem value="normal">Normal</SelectItem>
                             </SelectContent>
                           </Select>

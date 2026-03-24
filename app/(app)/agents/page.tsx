@@ -94,8 +94,9 @@ export default function AgentsPage() {
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
   const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
+  const isMasterAdmin = !!user?.user_is_master_admin
   const isMaster = !!(user?.user_is_master_admin && selectedTenant?.tenant_is_master)
-  const canEdit = isAgentsAdmin || isMaster
+  const canEdit = isAgentsAdmin || isMasterAdmin
 
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
