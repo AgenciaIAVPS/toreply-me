@@ -32,6 +32,7 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState('users')
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isMasterAdmin = !!user?.user_is_master_admin
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
 
   // Master users state
@@ -151,7 +152,7 @@ export default function UsersPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="admin">Admin</SelectItem>
-                              {isMaster && <SelectItem value="agents_admin">Agents Admin</SelectItem>}
+                              {isMasterAdmin && <SelectItem value="agents_admin">Agents Admin</SelectItem>}
                               <SelectItem value="normal">Normal</SelectItem>
                             </SelectContent>
                           </Select>

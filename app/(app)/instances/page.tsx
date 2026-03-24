@@ -53,14 +53,11 @@ function StatusBadge({ instance }: { instance: Instance }) {
 
 export default function InstancesPage() {
   const { user } = useAuth()
-  const { selectedTenant, isSubTenant } = useTenant()
+  const { selectedTenant } = useTenant()
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
-  const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
   const isMasterAdmin = !!user?.user_is_master_admin
-  const canManage = isSubTenant
-    ? (isAdmin || isMasterAdmin)
-    : (isAdmin || isAgentsAdmin || isMasterAdmin)
+  const canManage = isAdmin || isMasterAdmin
 
   const [instances, setInstances] = useState<Instance[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
