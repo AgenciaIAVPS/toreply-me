@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -67,7 +66,7 @@ export default function InviteRegisterPage() {
       if (!res.tenants || res.tenants.length === 0) {
         await refreshUser()
       }
-      router.push('/dashboard')
+      router.push('/setup-workspace')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao criar conta')
     } finally {
@@ -159,12 +158,6 @@ export default function InviteRegisterPage() {
           Entrar com Google
         </Button>
       </CardContent>
-      <CardFooter className="justify-center">
-        <p className="text-sm text-muted-foreground">
-          Já tem conta?{' '}
-          <Link href="/login" className="text-primary hover:underline font-medium">Entrar</Link>
-        </p>
-      </CardFooter>
     </Card>
   )
 }

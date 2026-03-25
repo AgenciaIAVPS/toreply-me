@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/contexts/TenantContext'
 import { api } from '@/lib/api'
 import { isValidSlug, sanitizeSlug } from '@/lib/validators'
-import { RelChildSummary } from '@/lib/types'
+import { RelChildSummary, Instance } from '@/lib/types'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +25,7 @@ type AuthPhone = {
   whatsapp_phone_number: string
   external_company_name: string | null
   external_id: string | null
-  instance_id: number | null
+  instance_id: number
   instance_name: string | null
 }
 
@@ -86,13 +86,17 @@ export default function ClientsPage() {
   const [subMonth, setSubMonth] = useState('')
   const [subAmount, setSubAmount] = useState('')
 
-  // WhatsApp phones
+  // Contatos (WhatsApp auth phones)
   const [authPhones, setAuthPhones] = useState<AuthPhone[]>([])
   const [phonesLoading, setPhonesLoading] = useState(false)
   const [newPhone, setNewPhone] = useState('')
   const [newPhoneCompany, setNewPhoneCompany] = useState('')
   const [newPhoneExtId, setNewPhoneExtId] = useState('')
   const [addingPhone, setAddingPhone] = useState(false)
+  // Instances for contact registration
+  const [instances, setInstances] = useState<Instance[]>([])
+  const [instancesLoading, setInstancesLoading] = useState(false)
+  const [selectedInstanceIds, setSelectedInstanceIds] = useState<number[]>([])
 
   // Create client form
   const [createName, setCreateName] = useState('')
@@ -168,26 +172,49 @@ export default function ClientsPage() {
         `/authphones-list?parent_tenant_id=${selectedTenant.tenant_id}&child_tenant_id=${child.child_tenant_id}`
       )
       setAuthPhones((res.phones || []).filter(p => p.whatsapp_phone_number))
-    } catch { toast.error('Erro ao carregar números') }
+    } catch { toast.error('Erro ao carregar contatos') }
     finally { setPhonesLoading(false) }
   }
 
+  const loadInstances = async () => {
+    if (!selectedTenant) return
+    setInstancesLoading(true)
+    try {
+      const res = await api.get<{ instances: Instance[] }>(`/instances-list?tenant_id=${selectedTenant.tenant_id}`)
+      setInstances((res.instances || []).filter(i => i.instance_channel === 'whatsapp'))
+    } catch { toast.error('Erro ao carregar instâncias') }
+    finally { setInstancesLoading(false) }
+  }
+
+  const toggleInstanceId = (id: number) => {
+    setSelectedInstanceIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
   const addPhone = async () => {
-    if (!active || !selectedTenant || !newPhone.trim()) return
+    if (!active || !selectedTenant || !newPhone.trim() || !newPhoneCompany.trim() || !newPhoneExtId.trim()) return
+    if (selectedInstanceIds.length === 0) {
+      toast.error('Selecione ao menos uma instância')
+      return
+    }
     setAddingPhone(true)
     try {
-      await api.post('/authphones-create', {
-        parent_tenant_id: selectedTenant.tenant_id,
-        child_tenant_id: active.child_tenant_id,
-        phone_number: newPhone.trim(),
-        external_company_name: newPhoneCompany || null,
-        external_id: newPhoneExtId || null,
-      })
-      toast.success('Número adicionado')
-      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId('')
+      await Promise.all(selectedInstanceIds.map(instanceId =>
+        api.post('/authphones-create', {
+          parent_tenant_id: selectedTenant.tenant_id,
+          child_tenant_id: active.child_tenant_id,
+          phone_number: newPhone.trim(),
+          external_company_name: newPhoneCompany.trim(),
+          external_id: newPhoneExtId.trim(),
+          instance_id: instanceId,
+        })
+      ))
+      toast.success('Contato adicionado')
+      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId(''); setSelectedInstanceIds([])
       loadAuthPhones(active)
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar número')
+      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar contato')
     } finally { setAddingPhone(false) }
   }
 
@@ -197,7 +224,7 @@ export default function ClientsPage() {
       await api.post('/authphones-delete', { parent_tenant_id: selectedTenant.tenant_id, phone_id: phoneId })
       toast.success('Número removido')
       if (active) loadAuthPhones(active)
-    } catch { toast.error('Erro ao remover número') }
+    } catch { toast.error('Erro ao remover contato') }
   }
 
   const loadClientDbs = async (child: RelChildSummary) => {
@@ -280,8 +307,10 @@ export default function ClientsPage() {
     setDialogMode(mode)
     if (mode === 'whatsapp') {
       setAuthPhones([])
-      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId('')
+      setInstances([])
+      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId(''); setSelectedInstanceIds([])
       loadAuthPhones(child)
+      loadInstances()
     }
     if (mode === 'edit') {
       setEditName(child.rel_name ?? child.child_tenant_name)
@@ -487,7 +516,7 @@ export default function ClientsPage() {
                     <Button variant="ghost" size="icon" title={child.rel_is_blocked ? 'Desbloquear' : 'Bloquear'} onClick={() => toggleBlock(child)}>
                       {child.rel_is_blocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="icon" title="Números WhatsApp" onClick={() => openDialog(child, 'whatsapp')}>
+                    <Button variant="ghost" size="icon" title="Contatos" onClick={() => openDialog(child, 'whatsapp')}>
                       <Phone className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" title="Convidar usuário" onClick={() => generateChildUserInvite(child)}>
@@ -598,21 +627,21 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: WhatsApp Numbers */}
+      {/* Dialog: Contatos */}
       <Dialog open={dialogMode === 'whatsapp'} onOpenChange={open => !open && closeDialog()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Números WhatsApp — {active?.rel_name ?? active?.child_tenant_name}</DialogTitle>
+            <DialogTitle>Contatos — {active?.rel_name ?? active?.child_tenant_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">Números autorizados a interagir com este cliente via WhatsApp.</p>
+            <p className="text-xs text-muted-foreground">Contatos WhatsApp autorizados a interagir com este cliente.</p>
 
             {phonesLoading ? (
               <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
               </div>
             ) : authPhones.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum número cadastrado.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum contato cadastrado.</p>
             ) : (
               <div className="space-y-2">
                 {authPhones.map(p => (
@@ -633,8 +662,8 @@ export default function ClientsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Remover número</AlertDialogTitle>
-                          <AlertDialogDescription>Remover o número <strong>{p.whatsapp_phone_number}</strong>?</AlertDialogDescription>
+                          <AlertDialogTitle>Remover contato</AlertDialogTitle>
+                          <AlertDialogDescription>Remover o contato <strong>{p.whatsapp_phone_number}</strong>?</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -648,14 +677,56 @@ export default function ClientsPage() {
             )}
 
             <div className="border-t pt-3 space-y-3">
-              <p className="text-sm font-medium">Adicionar número</p>
+              <p className="text-sm font-medium">Adicionar contato</p>
               <div className="space-y-2">
-                <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="5511999999999" />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input value={newPhoneCompany} onChange={e => setNewPhoneCompany(e.target.value)} placeholder="Nome empresa (opcional)" />
-                  <Input value={newPhoneExtId} onChange={e => setNewPhoneExtId(e.target.value)} placeholder="External ID (opcional)" />
+                <div className="space-y-1">
+                  <Label className="text-xs">WhatsApp *</Label>
+                  <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="5511999999999" />
                 </div>
-                <Button size="sm" onClick={addPhone} disabled={addingPhone || !newPhone.trim()}>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Empresa *</Label>
+                    <Input value={newPhoneCompany} onChange={e => setNewPhoneCompany(e.target.value)} placeholder="Nome da empresa" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">External ID *</Label>
+                    <Input value={newPhoneExtId} onChange={e => setNewPhoneExtId(e.target.value)} placeholder="Ex: 160" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Instâncias *</Label>
+                  {instancesLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Carregando instâncias...
+                    </div>
+                  ) : instances.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">Nenhuma instância WhatsApp encontrada.</p>
+                  ) : (
+                    <div className="border rounded-md divide-y max-h-32 overflow-y-auto">
+                      {instances.map(inst => (
+                        <label key={inst.instance_id} className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/40">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-primary"
+                            checked={selectedInstanceIds.includes(inst.instance_id)}
+                            onChange={() => toggleInstanceId(inst.instance_id)}
+                          />
+                          <span className="text-sm">{inst.instance_name}</span>
+                          {inst.instance_phone_number && (
+                            <span className="text-xs text-muted-foreground ml-auto font-mono">{inst.instance_phone_number}</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={addPhone}
+                  disabled={addingPhone || !newPhone.trim() || !newPhoneCompany.trim() || !newPhoneExtId.trim() || selectedInstanceIds.length === 0}
+                >
                   {addingPhone ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Adicionando...</> : <><Plus className="h-3 w-3 mr-1" />Adicionar</>}
                 </Button>
               </div>
