@@ -392,7 +392,7 @@ export default function AgentsPage() {
 
       {/* Agent Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[90vw] w-[1100px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[90vw] w-[min(1100px,90vw)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar Agente' : 'Novo Agente'}</DialogTitle>
           </DialogHeader>
@@ -589,12 +589,12 @@ export default function AgentsPage() {
                         </div>
 
                         {/* Nome + Método + Endpoint (always visible) */}
-                        <div className="flex gap-3 items-end">
-                          <div className="space-y-1 w-48 shrink-0">
+                        <div className="grid grid-cols-[180px_120px_1fr] gap-3 items-end">
+                          <div className="space-y-1">
                             <Label className="text-xs">Nome *</Label>
                             <Input value={step.steps_name} onChange={e => updateStep(step._localId, 'steps_name', e.target.value)} className="h-8 text-xs" placeholder="Buscar pedidos" />
                           </div>
-                          <div className="space-y-1 w-32 shrink-0">
+                          <div className="space-y-1">
                             <Label className="text-xs">Método</Label>
                             <Select value={step.steps_api_method} onValueChange={v => updateStep(step._localId, 'steps_api_method', v)}>
                               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -603,7 +603,7 @@ export default function AgentsPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-1 flex-1 min-w-0">
+                          <div className="space-y-1">
                             <Label className="text-xs">Endpoint *</Label>
                             <Input value={step.steps_api_endpoint} onChange={e => updateStep(step._localId, 'steps_api_endpoint', e.target.value)} className="h-8 text-xs font-mono w-full" placeholder="https://..." />
                           </div>
