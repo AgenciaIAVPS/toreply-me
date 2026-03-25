@@ -308,7 +308,9 @@ export default function ClientsPage() {
     if (mode === 'whatsapp') {
       setAuthPhones([])
       setInstances([])
-      setNewPhone(''); setNewPhoneCompany(''); setNewPhoneExtId(''); setSelectedInstanceIds([])
+      setNewPhone(''); setNewPhoneCompany('')
+      setNewPhoneExtId(child.rel_external_id ?? '')
+      setSelectedInstanceIds([])
       loadAuthPhones(child)
       loadInstances()
     }
@@ -495,7 +497,9 @@ export default function ClientsPage() {
                           </Badge>
                         )}
                         {child.rel_external_id && (
-                          <span className="text-xs text-muted-foreground font-mono">{child.rel_external_id}</span>
+                          <span className="text-xs text-muted-foreground">
+                            External ID: <span className="font-mono">{child.rel_external_id}</span>
+                          </span>
                         )}
                       </div>
                     </div>
