@@ -112,6 +112,16 @@ export default function AgentsPage() {
   const [steps, setSteps] = useState<StepDraft[]>([])
   const [vars, setVars] = useState<VarDraft[]>([])
 
+  // Step sub-tabs: record of localId → active sub-tab
+  const [stepSubTabs, setStepSubTabs] = useState<Record<string, string>>({})
+
+  // Reset activeTab when response type changes away from llm
+  useEffect(() => {
+    if (form.agents_response_type === 'math' && (activeTab === 'llm_response' || activeTab === 'variaveis')) {
+      setActiveTab('geral')
+    }
+  }, [form.agents_response_type]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadAgents = useCallback(() => {
     if (!selectedTenant) return
     setLoading(true)
@@ -128,6 +138,7 @@ export default function AgentsPage() {
     setForm(defaultForm)
     setSteps([])
     setVars([])
+    setStepSubTabs({})
     setActiveTab('geral')
     setOpen(true)
   }
@@ -150,6 +161,7 @@ export default function AgentsPage() {
         ? JSON.stringify(agent.agents_response_api_payload_template, null, 2) : '',
       agents_response_format_data: agent.agents_response_format_data || '',
     })
+    setStepSubTabs({})
     setActiveTab('geral')
     setOpen(true)
 
@@ -208,7 +220,6 @@ export default function AgentsPage() {
       for (let i = 0; i < steps.length; i++) {
         const s = steps[i]
         let parsedHeaders = null, parsedStepPayload = null
-        // silently ignore invalid JSON for headers/payload in steps
         try { if (s.steps_api_headers) parsedHeaders = typeof s.steps_api_headers === 'string' ? JSON.parse(s.steps_api_headers as unknown as string) : s.steps_api_headers } catch { /* ignore */ }
         try { if (s.steps_api_payload_template) parsedStepPayload = typeof s.steps_api_payload_template === 'string' ? JSON.parse(s.steps_api_payload_template as unknown as string) : s.steps_api_payload_template } catch { /* ignore */ }
         await api.post('/steps-upsert', {
@@ -287,6 +298,10 @@ export default function AgentsPage() {
     setSteps(prev => prev.filter(s => s._localId !== localId))
   }
 
+  const getStepSubTab = (localId: string) => stepSubTabs[localId] || 'headers'
+  const setStepSubTab = (localId: string, tab: string) =>
+    setStepSubTabs(prev => ({ ...prev, [localId]: tab }))
+
   // ─── Var helpers ───────────────────────────────────────────────────────────
   const updateVar = (localId: string, field: keyof VarDraft, value: unknown) => {
     setVars(prev => prev.map(v => v._localId === localId ? { ...v, [field]: value } : v))
@@ -295,6 +310,8 @@ export default function AgentsPage() {
   const removeVar = (localId: string) => {
     setVars(prev => prev.filter(v => v._localId !== localId))
   }
+
+  const isLlm = form.agents_response_type === 'llm'
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -375,7 +392,7 @@ export default function AgentsPage() {
 
       {/* Agent Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[90vw] w-[1100px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar Agente' : 'Novo Agente'}</DialogTitle>
           </DialogHeader>
@@ -395,10 +412,11 @@ export default function AgentsPage() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
                 <TabsTrigger value="geral">Geral</TabsTrigger>
-                <TabsTrigger value="scripts">Scripts</TabsTrigger>
-                <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
+                {isLlm && <TabsTrigger value="llm_response">Resposta LLM</TabsTrigger>}
+                <TabsTrigger value="regras_extras">Regras extras</TabsTrigger>
+                {isLlm && <TabsTrigger value="variaveis">Variáveis da resposta</TabsTrigger>}
                 <TabsTrigger value="steps">Steps</TabsTrigger>
               </TabsList>
 
@@ -423,14 +441,7 @@ export default function AgentsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label>Min / Max chars</Label>
-                    <div className="flex gap-2">
-                      <Input type="number" placeholder="Min" value={form.agents_min_chars} onChange={e => setForm(f => ({ ...f, agents_min_chars: e.target.value }))} />
-                      <Input type="number" placeholder="Max" value={form.agents_max_chars} onChange={e => setForm(f => ({ ...f, agents_max_chars: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 pt-6">
                     <label className="flex items-center gap-2 cursor-pointer text-sm">
                       <input type="checkbox" checked={form.agents_is_global} onChange={e => setForm(f => ({ ...f, agents_is_global: e.target.checked }))} className="rounded" />
                       É global
@@ -440,93 +451,112 @@ export default function AgentsPage() {
                       Agente de fechamento
                     </label>
                   </div>
-                  <div className="sm:col-span-2 space-y-1">
+                </div>
+              </TabsContent>
+
+              {/* TAB: RESPOSTA LLM (só para tipo llm) */}
+              {isLlm && (
+                <TabsContent value="llm_response" className="space-y-4 mt-4">
+                  <div className="space-y-1">
                     <Label>Descrição do tipo de dado</Label>
-                    <Textarea value={form.agents_data_type_description} onChange={e => setForm(f => ({ ...f, agents_data_type_description: e.target.value }))} rows={2} />
+                    <Textarea value={form.agents_data_type_description} onChange={e => setForm(f => ({ ...f, agents_data_type_description: e.target.value }))} rows={3} placeholder="Descreva o tipo de dado retornado pela API" />
                   </div>
-                  <div className="sm:col-span-2 space-y-1">
+                  <div className="space-y-1">
                     <Label>Dados a reportar</Label>
-                    <Textarea value={form.agents_data_to_report} onChange={e => setForm(f => ({ ...f, agents_data_to_report: e.target.value }))} rows={2} />
+                    <Textarea value={form.agents_data_to_report} onChange={e => setForm(f => ({ ...f, agents_data_to_report: e.target.value }))} rows={3} placeholder="Quais dados o agente deve reportar ao usuário" />
                   </div>
-                  <div className="sm:col-span-2 space-y-1">
-                    <Label>Regras extras</Label>
-                    <Textarea value={form.agents_extra_rules} onChange={e => setForm(f => ({ ...f, agents_extra_rules: e.target.value }))} rows={2} />
+                  <div className="space-y-1">
+                    <Label>Min / Max chars</Label>
+                    <div className="flex gap-2 max-w-xs">
+                      <Input type="number" placeholder="Min" value={form.agents_min_chars} onChange={e => setForm(f => ({ ...f, agents_min_chars: e.target.value }))} />
+                      <Input type="number" placeholder="Max" value={form.agents_max_chars} onChange={e => setForm(f => ({ ...f, agents_max_chars: e.target.value }))} />
+                    </div>
                   </div>
+                  <div className="space-y-1">
+                    <Label>Script set_data (JS)</Label>
+                    <Textarea value={form.agents_response_set_data} onChange={e => setForm(f => ({ ...f, agents_response_set_data: e.target.value }))} rows={6} className="font-mono text-xs" placeholder="// JavaScript executado após steps" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Template de payload LLM (JSON)</Label>
+                    <Textarea value={form.agents_response_api_payload_template} onChange={e => setForm(f => ({ ...f, agents_response_api_payload_template: e.target.value }))} rows={6} className="font-mono text-xs" placeholder='{"messages": [...]}' />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Script de formatação (JS)</Label>
+                    <Textarea value={form.agents_response_format_data} onChange={e => setForm(f => ({ ...f, agents_response_format_data: e.target.value }))} rows={6} className="font-mono text-xs" placeholder="// JavaScript para formatar resposta final" />
+                  </div>
+                </TabsContent>
+              )}
+
+              {/* TAB: REGRAS EXTRAS */}
+              <TabsContent value="regras_extras" className="mt-4">
+                <div className="space-y-1">
+                  <Label>Regras extras</Label>
+                  <Textarea
+                    value={form.agents_extra_rules}
+                    onChange={e => setForm(f => ({ ...f, agents_extra_rules: e.target.value }))}
+                    className="font-mono text-xs min-h-[400px]"
+                    placeholder="Regras adicionais que o agente deve seguir..."
+                  />
                 </div>
               </TabsContent>
 
-              {/* TAB: SCRIPTS */}
-              <TabsContent value="scripts" className="space-y-4 mt-4">
-                <div className="space-y-1">
-                  <Label>Script set_data (JS)</Label>
-                  <Textarea value={form.agents_response_set_data} onChange={e => setForm(f => ({ ...f, agents_response_set_data: e.target.value }))} rows={5} className="font-mono text-xs" placeholder="// JavaScript executado após steps" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Template de payload LLM (JSON)</Label>
-                  <Textarea value={form.agents_response_api_payload_template} onChange={e => setForm(f => ({ ...f, agents_response_api_payload_template: e.target.value }))} rows={5} className="font-mono text-xs" placeholder='{"messages": [...]}' />
-                </div>
-                <div className="space-y-1">
-                  <Label>Script de formatação (JS)</Label>
-                  <Textarea value={form.agents_response_format_data} onChange={e => setForm(f => ({ ...f, agents_response_format_data: e.target.value }))} rows={5} className="font-mono text-xs" placeholder="// JavaScript para formatar resposta final" />
-                </div>
-              </TabsContent>
-
-              {/* TAB: VARIÁVEIS */}
-              <TabsContent value="variaveis" className="mt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Variáveis de resposta do agente</p>
-                  <Button size="sm" variant="outline" onClick={() => setVars(v => [...v, defaultVar()])}>
-                    <Plus className="h-3 w-3 mr-1" />Adicionar
-                  </Button>
-                </div>
-                {vars.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Nenhuma variável.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {vars.map((v, i) => (
-                      <div key={v._localId} className="grid grid-cols-12 gap-2 items-end border rounded-md p-3">
-                        <div className="col-span-3 space-y-1">
-                          <Label className="text-xs">Nome var.</Label>
-                          <Input value={v.arv_variable_name} onChange={e => updateVar(v._localId, 'arv_variable_name', e.target.value)} className="h-8 text-xs" placeholder="vendas_total" />
-                        </div>
-                        <div className="col-span-2 space-y-1">
-                          <Label className="text-xs">Tipo</Label>
-                          <Select value={v.arv_type} onValueChange={val => updateVar(v._localId, 'arv_type', val)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="string">string</SelectItem>
-                              <SelectItem value="number">number</SelectItem>
-                              <SelectItem value="usd_to_brl">usd→brl</SelectItem>
-                              <SelectItem value="json_flatten">json_flatten</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-3 space-y-1">
-                          <Label className="text-xs">Label</Label>
-                          <Input value={v.arv_label} onChange={e => updateVar(v._localId, 'arv_label', e.target.value)} className="h-8 text-xs" placeholder="Total de vendas" />
-                        </div>
-                        <div className="col-span-1 space-y-1">
-                          <Label className="text-xs">Ord.</Label>
-                          <Input type="number" value={v.arv_order} onChange={e => updateVar(v._localId, 'arv_order', parseInt(e.target.value) || 0)} className="h-8 text-xs" />
-                        </div>
-                        <div className="col-span-2 flex items-center gap-1 pt-4">
-                          <label className="flex items-center gap-1 text-xs cursor-pointer">
-                            <input type="checkbox" checked={v.arv_sanitize} onChange={e => updateVar(v._localId, 'arv_sanitize', e.target.checked)} className="rounded" />
-                            Sanitizar
-                          </label>
-                        </div>
-                        <div className="col-span-1 flex justify-end pt-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeVar(v._localId)}>
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                        {/* Hidden ordering counter */}
-                        <div className="hidden">{i}</div>
-                      </div>
-                    ))}
+              {/* TAB: VARIÁVEIS DA RESPOSTA (só para tipo llm) */}
+              {isLlm && (
+                <TabsContent value="variaveis" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Variáveis de resposta do agente</p>
+                    <Button size="sm" variant="outline" onClick={() => setVars(v => [...v, defaultVar()])}>
+                      <Plus className="h-3 w-3 mr-1" />Adicionar
+                    </Button>
                   </div>
-                )}
-              </TabsContent>
+                  {vars.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">Nenhuma variável.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {vars.map((v, i) => (
+                        <div key={v._localId} className="grid grid-cols-12 gap-2 items-end border rounded-md p-3">
+                          <div className="col-span-3 space-y-1">
+                            <Label className="text-xs">Nome var.</Label>
+                            <Input value={v.arv_variable_name} onChange={e => updateVar(v._localId, 'arv_variable_name', e.target.value)} className="h-8 text-xs" placeholder="vendas_total" />
+                          </div>
+                          <div className="col-span-2 space-y-1">
+                            <Label className="text-xs">Tipo</Label>
+                            <Select value={v.arv_type} onValueChange={val => updateVar(v._localId, 'arv_type', val)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="string">string</SelectItem>
+                                <SelectItem value="number">number</SelectItem>
+                                <SelectItem value="usd_to_brl">usd→brl</SelectItem>
+                                <SelectItem value="json_flatten">json_flatten</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-3 space-y-1">
+                            <Label className="text-xs">Label</Label>
+                            <Input value={v.arv_label} onChange={e => updateVar(v._localId, 'arv_label', e.target.value)} className="h-8 text-xs" placeholder="Total de vendas" />
+                          </div>
+                          <div className="col-span-1 space-y-1">
+                            <Label className="text-xs">Ord.</Label>
+                            <Input type="number" value={v.arv_order} onChange={e => updateVar(v._localId, 'arv_order', parseInt(e.target.value) || 0)} className="h-8 text-xs" />
+                          </div>
+                          <div className="col-span-2 flex items-center gap-1 pt-4">
+                            <label className="flex items-center gap-1 text-xs cursor-pointer">
+                              <input type="checkbox" checked={v.arv_sanitize} onChange={e => updateVar(v._localId, 'arv_sanitize', e.target.checked)} className="rounded" />
+                              Sanitizar
+                            </label>
+                          </div>
+                          <div className="col-span-1 flex justify-end pt-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeVar(v._localId)}>
+                              <Trash2 size={13} />
+                            </Button>
+                          </div>
+                          <div className="hidden">{i}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              )}
 
               {/* TAB: STEPS */}
               <TabsContent value="steps" className="mt-4 space-y-3">
@@ -539,9 +569,10 @@ export default function AgentsPage() {
                 {steps.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">Nenhum step.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {steps.map((step, idx) => (
-                      <div key={step._localId} className="border rounded-md p-3 space-y-3">
+                      <div key={step._localId} className="border rounded-md p-4 space-y-4">
+                        {/* Step header: order controls + delete */}
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-muted-foreground">Step {idx + 1}</span>
                           <div className="flex gap-1">
@@ -556,12 +587,14 @@ export default function AgentsPage() {
                             </Button>
                           </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          <div className="space-y-1">
+
+                        {/* Nome + Método + Endpoint (always visible) */}
+                        <div className="flex gap-3 items-end">
+                          <div className="space-y-1 w-48 shrink-0">
                             <Label className="text-xs">Nome *</Label>
                             <Input value={step.steps_name} onChange={e => updateStep(step._localId, 'steps_name', e.target.value)} className="h-8 text-xs" placeholder="Buscar pedidos" />
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1 w-32 shrink-0">
                             <Label className="text-xs">Método</Label>
                             <Select value={step.steps_api_method} onValueChange={v => updateStep(step._localId, 'steps_api_method', v)}>
                               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -570,45 +603,83 @@ export default function AgentsPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1 flex-1 min-w-0">
                             <Label className="text-xs">Endpoint *</Label>
-                            <Input value={step.steps_api_endpoint} onChange={e => updateStep(step._localId, 'steps_api_endpoint', e.target.value)} className="h-8 text-xs font-mono" placeholder="https://..." />
+                            <Input value={step.steps_api_endpoint} onChange={e => updateStep(step._localId, 'steps_api_endpoint', e.target.value)} className="h-8 text-xs font-mono w-full" placeholder="https://..." />
                           </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Headers (JSON)</Label>
+
+                        {/* Sub-tabs for detailed fields */}
+                        <Tabs value={getStepSubTab(step._localId)} onValueChange={tab => setStepSubTab(step._localId, tab)}>
+                          <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
+                            <TabsTrigger value="headers" className="text-xs">Headers</TabsTrigger>
+                            <TabsTrigger value="payload" className="text-xs">Payload</TabsTrigger>
+                            <TabsTrigger value="pre_sql" className="text-xs">Pre SQL</TabsTrigger>
+                            <TabsTrigger value="pre_script" className="text-xs">Pre Script</TabsTrigger>
+                            <TabsTrigger value="post_script" className="text-xs">Post Script</TabsTrigger>
+                            <TabsTrigger value="post_sql" className="text-xs">Post SQL</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="headers" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Headers (JSON)</Label>
                             <Textarea
                               value={step.steps_api_headers ? JSON.stringify(step.steps_api_headers, null, 2) : ''}
                               onChange={e => { try { updateStep(step._localId, 'steps_api_headers', e.target.value ? JSON.parse(e.target.value) : null) } catch { updateStep(step._localId, 'steps_api_headers', e.target.value as unknown as null) } }}
-                              rows={3} className="font-mono text-xs" placeholder='{"Authorization": "Bearer ..."}' />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Payload template (JSON)</Label>
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder='{"Authorization": "Bearer ..."}'
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="payload" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Payload template (JSON)</Label>
                             <Textarea
                               value={step.steps_api_payload_template ? JSON.stringify(step.steps_api_payload_template, null, 2) : ''}
                               onChange={e => { try { updateStep(step._localId, 'steps_api_payload_template', e.target.value ? JSON.parse(e.target.value) : null) } catch { updateStep(step._localId, 'steps_api_payload_template', e.target.value as unknown as null) } }}
-                              rows={3} className="font-mono text-xs" placeholder='{"query": "..."}' />
-                          </div>
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Pre SQL</Label>
-                            <Textarea value={step.steps_pre_sql || ''} onChange={e => updateStep(step._localId, 'steps_pre_sql', e.target.value || null)} rows={3} className="font-mono text-xs" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Pre Script (JS)</Label>
-                            <Textarea value={step.steps_pre_script || ''} onChange={e => updateStep(step._localId, 'steps_pre_script', e.target.value || null)} rows={3} className="font-mono text-xs" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Post Script (JS)</Label>
-                            <Textarea value={step.steps_post_script || ''} onChange={e => updateStep(step._localId, 'steps_post_script', e.target.value || null)} rows={3} className="font-mono text-xs" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Post SQL</Label>
-                            <Textarea value={step.steps_post_sql || ''} onChange={e => updateStep(step._localId, 'steps_post_sql', e.target.value || null)} rows={3} className="font-mono text-xs" />
-                          </div>
-                        </div>
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder='{"query": "..."}'
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="pre_sql" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Pre SQL</Label>
+                            <Textarea
+                              value={step.steps_pre_sql || ''}
+                              onChange={e => updateStep(step._localId, 'steps_pre_sql', e.target.value || null)}
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder="SELECT ..."
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="pre_script" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Pre Script (JS)</Label>
+                            <Textarea
+                              value={step.steps_pre_script || ''}
+                              onChange={e => updateStep(step._localId, 'steps_pre_script', e.target.value || null)}
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder="// JavaScript executado antes da chamada API"
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="post_script" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Post Script (JS)</Label>
+                            <Textarea
+                              value={step.steps_post_script || ''}
+                              onChange={e => updateStep(step._localId, 'steps_post_script', e.target.value || null)}
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder="// JavaScript executado após a chamada API"
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="post_sql" className="mt-2">
+                            <Label className="text-xs text-muted-foreground">Post SQL</Label>
+                            <Textarea
+                              value={step.steps_post_sql || ''}
+                              onChange={e => updateStep(step._localId, 'steps_post_sql', e.target.value || null)}
+                              className="font-mono text-xs min-h-[520px] mt-1"
+                              placeholder="INSERT INTO ..."
+                            />
+                          </TabsContent>
+                        </Tabs>
                       </div>
                     ))}
                   </div>
