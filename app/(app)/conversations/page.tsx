@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Loader2, Search, MessageCircle, Bot, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useWebSocket, WsStatus } from '@/hooks/useWebSocket'
+import { useSSE, SseStatus } from '@/hooks/useSSE'
 
 function formatTime(dateStr: string | null) {
   if (!dateStr) return ''
@@ -28,13 +28,13 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className="text-xs">Arquivada</Badge>
 }
 
-const wsDotClass: Record<WsStatus, string> = {
+const wsDotClass: Record<SseStatus, string> = {
   connecting:   'bg-yellow-400 animate-pulse',
   connected:    'bg-green-500',
   disconnected: 'bg-red-500',
 }
 
-const wsLabel: Record<WsStatus, string> = {
+const wsLabel: Record<SseStatus, string> = {
   connecting:   'Conectando...',
   connected:    'Tempo real ativo',
   disconnected: 'Desconectado',
@@ -63,8 +63,8 @@ export default function ConversationsPage() {
   const conversationsRef = useRef<Conversation[]>([])
   useEffect(() => { conversationsRef.current = conversations }, [conversations])
 
-  // WebSocket — substitui o polling de 5s
-  const { status: wsStatus, lastMessage } = useWebSocket(process.env.NEXT_PUBLIC_N8N_WS_URL)
+  // SSE — real-time sem polling
+  const { status: wsStatus, lastMessage } = useSSE(process.env.NEXT_PUBLIC_SSE_URL)
 
   const loadConversations = useCallback(() => {
     if (!selectedTenant) return
