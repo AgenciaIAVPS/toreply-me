@@ -271,7 +271,7 @@ export default function ConversationsPage() {
                     <p className="text-xs text-muted-foreground">{convMeta?.contact_phone || selected.contact_phone}</p>
                   )}
                 </div>
-                {convMeta && <StatusBadge status={convMeta.conversation_status} />}
+                <StatusBadge status={convMeta?.conversation_status || selected.conversation_status} />
               </div>
               {/* Indicador de status WebSocket */}
               <div className="flex items-center gap-1.5 shrink-0" title={wsLabel[wsStatus]}>
