@@ -333,7 +333,7 @@ export default function ContactsPage() {
 
                 {/* Instance selection */}
                 <div className="space-y-1">
-                  <Label className="text-xs">Instâncias *</Label>
+                  <Label className="text-xs">Números de WhatsApp *</Label>
                   {instancesLoading ? (
                     <div className="flex items-center gap-2 text-muted-foreground text-xs py-2">
                       <Loader2 className="h-3 w-3 animate-spin" /> Carregando instâncias...
@@ -350,7 +350,7 @@ export default function ContactsPage() {
                             onChange={() => toggleInstanceId(inst.instance_id)}
                             className="rounded"
                           />
-                          <span className="truncate">{inst.instance_name}</span>
+                          <span className="truncate">{inst.instance_name}{inst.instance_phone_number ? ` · ${inst.instance_phone_number}` : ''}</span>
                         </label>
                       ))}
                     </div>

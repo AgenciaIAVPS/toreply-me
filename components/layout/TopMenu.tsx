@@ -37,7 +37,7 @@ export function TopMenu() {
     { href: '/users', label: 'Usuários', show: !!selectedTenant && (!isSubTenant || !!isAdmin) },
     { href: '/clients', label: 'Clientes', show: !!(isAdmin || isAgentsAdmin) && !isSubTenant && !!(isParent || isMaster) },
     { href: '/agents', label: 'Agentes', show: !!selectedTenant },
-    { href: '/instances', label: 'Instâncias', show: !!selectedTenant && (!!isAdmin || !!isMasterAdmin) },
+    { href: '/instances', label: 'Números', show: !!selectedTenant && (!!isAdmin || !!isMasterAdmin) },
     { href: '/conversations', label: 'Conversas', show: !!selectedTenant },
     { href: '/contacts', label: 'Contatos', show: !!selectedTenant },
     { href: '/payments', label: 'Pagamentos', show: !!isAdmin },

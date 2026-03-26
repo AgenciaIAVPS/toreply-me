@@ -684,7 +684,7 @@ export default function ClientsPage() {
               <p className="text-sm font-medium">Adicionar contato</p>
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">WhatsApp *</Label>
+                  <Label className="text-xs">Número telefônico do contato *</Label>
                   <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="5511999999999" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -699,7 +699,7 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs">Instâncias *</Label>
+                  <Label className="text-xs">Números de WhatsApp *</Label>
                   {instancesLoading ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                       <Loader2 className="h-3 w-3 animate-spin" /> Carregando instâncias...
@@ -716,10 +716,7 @@ export default function ClientsPage() {
                             checked={selectedInstanceIds.includes(inst.instance_id)}
                             onChange={() => toggleInstanceId(inst.instance_id)}
                           />
-                          <span className="text-sm">{inst.instance_name}</span>
-                          {inst.instance_phone_number && (
-                            <span className="text-xs text-muted-foreground ml-auto font-mono">{inst.instance_phone_number}</span>
-                          )}
+                          <span className="text-sm">{inst.instance_name}{inst.instance_phone_number ? ` · ${inst.instance_phone_number}` : ''}</span>
                         </label>
                       ))}
                     </div>

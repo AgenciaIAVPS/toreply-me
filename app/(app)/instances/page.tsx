@@ -31,7 +31,7 @@ type InstanceForm = {
 const defaultForm: InstanceForm = {
   instance_name: '',
   instance_phone_number: '',
-  instance_agent_selection_mode: 'fixed',
+  instance_agent_selection_mode: 'dynamic',
   instance_current_agent_id: '',
   instance_conversation_timeout_minutes: '120',
   instance_only_auth: false,
@@ -243,14 +243,14 @@ export default function InstancesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Instâncias WhatsApp</h1>
+        <h1 className="text-lg font-semibold">Números de WhatsApp</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadInstances} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
           {canManage && (
             <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />Nova Instância
+              <Plus className="mr-2 h-4 w-4" />Novo número de WhatsApp
             </Button>
           )}
         </div>
@@ -263,8 +263,8 @@ export default function InstancesPage() {
       ) : instances.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
           <Smartphone className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm">Nenhuma instância cadastrada.</p>
-          {canManage && <p className="text-xs mt-1">Clique em &quot;Nova Instância&quot; para começar.</p>}
+          <p className="text-sm">Nenhum número de WhatsApp cadastrado.</p>
+          {canManage && <p className="text-xs mt-1">Clique em &quot;Novo número de WhatsApp&quot; para começar.</p>}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -336,7 +336,7 @@ export default function InstancesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar Instância' : 'Nova Instância'}</DialogTitle>
+            <DialogTitle>{editing ? 'Editar número de WhatsApp' : 'Novo número de WhatsApp'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -355,7 +355,7 @@ export default function InstancesPage() {
               <Label>Número WhatsApp</Label>
               <Input
                 value={form.instance_phone_number}
-                onChange={e => setForm(f => ({ ...f, instance_phone_number: e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, instance_phone_number: e.target.value.replace(/\D/g, '') }))}
                 placeholder="5511999999999"
               />
             </div>
