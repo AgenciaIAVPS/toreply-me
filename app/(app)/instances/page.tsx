@@ -134,12 +134,23 @@ export default function InstancesPage() {
       if (editing) {
         await api.post('/instances-update', { ...payload, instance_id: editing.instance_id })
         toast.success('Instância atualizada')
+        setOpen(false)
+        loadInstances()
       } else {
         await api.post('/instances-create', payload)
         toast.success('Instância criada com sucesso')
+        setOpen(false)
+        // Recarrega a lista e abre o QR Code da nova instância automaticamente
+        try {
+          const res = await api.get<{ instances: Instance[] }>(`/instances-list?tenant_id=${selectedTenant.tenant_id}`)
+          const all = res.instances || []
+          setInstances(all)
+          const newInst = all.find(i => i.instance_name === form.instance_name)
+          if (newInst) openQrCode(newInst)
+        } catch {
+          loadInstances()
+        }
       }
-      setOpen(false)
-      loadInstances()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro ao salvar instância')
     } finally {
