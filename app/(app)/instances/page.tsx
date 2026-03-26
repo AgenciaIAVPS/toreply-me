@@ -170,7 +170,8 @@ export default function InstancesPage() {
       if (res.state === 'open') {
         setQrConnected(true)
         stopQrPoll()
-        loadInstances()
+        // Aguarda 2s para Evolution API propagar o estado antes de recarregar
+        setTimeout(() => loadInstances(), 2000)
       }
     } catch { /* ignore */ }
   }, [selectedTenant, loadInstances])
@@ -214,12 +215,14 @@ export default function InstancesPage() {
     qrPollRef.current = setInterval(() => checkQrStatus(inst.instance_id), 3000)
   }
 
-  const closeQrDialog = () => {
+  const closeQrDialog = (wasConnected?: boolean) => {
     stopQrPoll()
     setQrOpen(false)
     setQrInstance(null)
     setQrCode(null)
     setQrConnected(false)
+    // Se fechou após conectar (via botão ou X), recarrega a lista
+    if (wasConnected) setTimeout(() => loadInstances(), 1500)
   }
 
   useEffect(() => () => stopQrPoll(), [])
@@ -418,7 +421,7 @@ export default function InstancesPage() {
       </Dialog>
 
       {/* QR Code Dialog */}
-      <Dialog open={qrOpen} onOpenChange={closeQrDialog}>
+      <Dialog open={qrOpen} onOpenChange={() => closeQrDialog(qrConnected)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Conectar {qrInstance?.instance_name}</DialogTitle>
@@ -431,7 +434,7 @@ export default function InstancesPage() {
                   <Wifi className="h-8 w-8 text-green-600" />
                 </div>
                 <p className="text-sm font-medium text-green-600">WhatsApp conectado com sucesso!</p>
-                <Button onClick={closeQrDialog}>Fechar</Button>
+                <Button onClick={() => closeQrDialog(true)}>Fechar</Button>
               </div>
             ) : qrLoading ? (
               <div className="flex flex-col items-center gap-2 py-8">
