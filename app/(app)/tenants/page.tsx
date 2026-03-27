@@ -360,7 +360,7 @@ export default function TenantsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between gap-2">
         <h1 className="text-2xl font-bold">Tenants</h1>
         <Button onClick={openCreate} size="sm"><Plus className="mr-2 h-4 w-4" />Novo tenant</Button>
       </div>

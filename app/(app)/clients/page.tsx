@@ -435,12 +435,12 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-sm text-muted-foreground">Sub-tenants vinculados a esta conta.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button onClick={() => { setCreateName(''); setCreateDesc(''); setCreateSlug(''); setCreateSlugError(''); setDialogMode('create') }} size="sm" variant="outline">
             <Plus className="mr-2 h-4 w-4" />
             Cadastrar cliente
@@ -504,7 +504,7 @@ export default function ClientsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <Button variant="ghost" size="icon" title="Editar" onClick={() => openDialog(child, 'edit')}>
                       <Pencil className="h-4 w-4" />
                     </Button>

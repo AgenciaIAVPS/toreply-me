@@ -242,7 +242,7 @@ export default function InstancesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between gap-2">
         <h1 className="text-lg font-semibold">Números de WhatsApp</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadInstances} disabled={loading}>

@@ -316,7 +316,7 @@ export default function AgentsPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between gap-2">
         <h1 className="text-lg font-semibold">Agentes</h1>
         {canEdit && (
           <Button size="sm" onClick={openCreate}>
@@ -412,7 +412,7 @@ export default function AgentsPage() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
+              <TabsList className="flex h-auto gap-1 overflow-x-auto flex-nowrap justify-start [&::-webkit-scrollbar]:hidden [&>button]:shrink-0">
                 <TabsTrigger value="geral">Geral</TabsTrigger>
                 {isLlm && <TabsTrigger value="llm_response">Resposta LLM</TabsTrigger>}
                 <TabsTrigger value="regras_extras">Regras extras</TabsTrigger>
@@ -611,7 +611,7 @@ export default function AgentsPage() {
 
                         {/* Sub-tabs for detailed fields */}
                         <Tabs value={getStepSubTab(step._localId)} onValueChange={tab => setStepSubTab(step._localId, tab)}>
-                          <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
+                          <TabsList className="flex h-auto gap-1 overflow-x-auto flex-nowrap justify-start [&::-webkit-scrollbar]:hidden [&>button]:shrink-0">
                             <TabsTrigger value="headers" className="text-xs">Headers</TabsTrigger>
                             <TabsTrigger value="payload" className="text-xs">Payload</TabsTrigger>
                             <TabsTrigger value="pre_sql" className="text-xs">Pre SQL</TabsTrigger>

@@ -7,7 +7,7 @@ import { Conversation, Message } from '@/lib/types'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Loader2, Search, MessageCircle, Bot, User } from 'lucide-react'
+import { Loader2, Search, MessageCircle, Bot, User, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSSE, SseStatus } from '@/hooks/useSSE'
 
@@ -192,9 +192,13 @@ export default function ConversationsPage() {
   )
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] border rounded-lg overflow-hidden">
+    <div className="flex h-[calc(100vh-8rem)] max-[799px]:h-[calc(100dvh-4rem)] border rounded-lg overflow-hidden">
       {/* Left panel: Conversation list */}
-      <div className="w-80 shrink-0 border-r flex flex-col">
+      <div className={cn(
+        "w-80 shrink-0 border-r flex flex-col",
+        "max-[799px]:w-full max-[799px]:border-r-0",
+        selected && "max-[799px]:hidden"
+      )}>
         <div className="p-3 border-b">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -260,7 +264,7 @@ export default function ConversationsPage() {
       </div>
 
       {/* Right panel: Messages */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn("flex-1 flex flex-col min-w-0", !selected && "max-[799px]:hidden")}>
         {!selected ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageCircle className="h-12 w-12 mb-3 opacity-20" />
@@ -271,6 +275,13 @@ export default function ConversationsPage() {
             {/* Header */}
             <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
+                <button
+                  className="min-[800px]:hidden p-1.5 rounded-md hover:bg-muted transition-colors shrink-0"
+                  onClick={() => setSelected(null)}
+                  aria-label="Voltar"
+                >
+                  <ChevronLeft size={18} />
+                </button>
                 <div className="min-w-0">
                   <p className="font-medium text-sm">{convMeta?.contact_name || selected.contact_name}</p>
                   {(convMeta?.contact_phone || selected.contact_phone) && (

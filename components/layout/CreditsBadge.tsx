@@ -48,10 +48,15 @@ export function CreditsBadge() {
           </button>
         )}
         {isLow ? (
-          <Badge variant="destructive" className="gap-1 text-xs">
-            <AlertTriangle size={10} />
-            Você está sem créditos, insira créditos
-          </Badge>
+          <button onClick={() => setShowAdd(true)} className="focus:outline-none">
+            <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground cursor-pointer hover:opacity-90">
+              <AlertTriangle size={11} />
+            </span>
+            <Badge variant="destructive" className="gap-1 text-xs cursor-pointer hover:opacity-90 hidden min-[800px]:inline-flex">
+              <AlertTriangle size={10} />
+              Sem créditos
+            </Badge>
+          </button>
         ) : (
           <Badge variant="secondary" className="text-xs font-mono">
             R$ {credits.toFixed(2)}
