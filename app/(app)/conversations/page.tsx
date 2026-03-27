@@ -54,6 +54,7 @@ export default function ConversationsPage() {
   const [newConvIds, setNewConvIds] = useState<Set<number>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const loadingConvIdRef = useRef<number | null>(null)
 
   // Ref para acompanhar a conversa selecionada sem stale closure no handler WS
   const selectedRef = useRef<Conversation | null>(null)
@@ -76,17 +77,22 @@ export default function ConversationsPage() {
 
   const loadMessages = useCallback(async (conv: Conversation) => {
     if (!selectedTenant) return
+    loadingConvIdRef.current = conv.conversation_id
     setLoadingMsgs(true)
     try {
       const res = await api.get<{ messages: Message[]; conversation: { contact_name: string; contact_phone: string | null; conversation_status: string } }>(
         `/messages-list?tenant_id=${selectedTenant.tenant_id}&conversation_id=${conv.conversation_id}`
       )
+      if (loadingConvIdRef.current !== conv.conversation_id) return
       setMessages(res.messages || [])
       setConvMeta(res.conversation || null)
     } catch {
+      if (loadingConvIdRef.current !== conv.conversation_id) return
       toast.error('Erro ao carregar mensagens')
     } finally {
-      setLoadingMsgs(false)
+      if (loadingConvIdRef.current === conv.conversation_id) {
+        setLoadingMsgs(false)
+      }
     }
   }, [selectedTenant])
 
