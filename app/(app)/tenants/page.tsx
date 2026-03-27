@@ -306,7 +306,7 @@ export default function TenantsPage() {
     return (
     <Card key={t.tenant_id} className={t.tenant_is_blocked ? 'border-destructive/50' : ''}>
       <CardHeader className="py-3 px-4">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 max-[799px]:flex-col">
           <div className="min-w-0">
             <CardTitle className="text-base flex flex-wrap items-center gap-1.5">
               {t.tenant_name}
@@ -330,7 +330,7 @@ export default function TenantsPage() {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 flex-wrap max-[799px]:w-full">
             {!archived ? (
               <>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => generateInvite(t)} title="Gerar convite"><Link2 size={13} /></Button>
