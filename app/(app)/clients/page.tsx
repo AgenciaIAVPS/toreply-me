@@ -477,7 +477,7 @@ export default function ClientsPage() {
           ).map(child => (
             <Card key={child.rel_id} className={child.rel_is_blocked ? 'opacity-60' : ''}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 max-[799px]:flex-col max-[799px]:items-start">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Building2 className="h-4 w-4 text-primary" />
@@ -504,7 +504,7 @@ export default function ClientsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap max-[799px]:w-full">
                     <Button variant="ghost" size="icon" title="Editar" onClick={() => openDialog(child, 'edit')}>
                       <Pencil className="h-4 w-4" />
                     </Button>

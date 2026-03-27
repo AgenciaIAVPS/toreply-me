@@ -104,7 +104,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col min-[800px]:flex-row min-[800px]:items-center min-[800px]:justify-between gap-2">
           <TabsList>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             {isMaster && <TabsTrigger value="master">Usuários Master</TabsTrigger>}
@@ -124,7 +124,7 @@ export default function UsersPage() {
               {users.map(u => (
                 <Card key={u.user_id}>
                   <CardContent className="py-3 px-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3 max-[799px]:flex-col max-[799px]:items-start">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={u.user_avatar_url || ''} />
@@ -138,7 +138,7 @@ export default function UsersPage() {
                           <p className="text-xs text-muted-foreground">{u.user_email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap max-[799px]:pl-12">
                         {!u.user_email_verified && (
                           <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">Email não verificado</Badge>
                         )}
