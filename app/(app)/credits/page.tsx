@@ -124,6 +124,7 @@ export default function CreditsPage() {
         <AddCreditsModal
           onClose={() => setShowAdd(false)}
           onSuccess={() => load()}
+          tenantId={selectedTenant?.tenant_id}
         />
       )}
     </div>

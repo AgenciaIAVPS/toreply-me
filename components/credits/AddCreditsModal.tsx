@@ -13,9 +13,10 @@ const PRESETS = [5, 50, 100, 250]
 interface Props {
   onClose: () => void
   onSuccess: (newBalance: number) => void
+  tenantId?: number | null
 }
 
-export function AddCreditsModal({ onClose, onSuccess }: Props) {
+export function AddCreditsModal({ onClose, onSuccess, tenantId }: Props) {
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
@@ -26,7 +27,7 @@ export function AddCreditsModal({ onClose, onSuccess }: Props) {
     }
     setLoading(true)
     try {
-      const res = await api.post<{ checkout_url: string }>('/payments/create', { amount: value })
+      const res = await api.post<{ checkout_url: string }>('/payments/create', { amount: value, tenant_id: tenantId })
       window.open(res.checkout_url, '_blank')
       onClose()
     } catch (err: unknown) {
