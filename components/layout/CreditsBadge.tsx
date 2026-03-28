@@ -29,12 +29,13 @@ export function CreditsBadge() {
   const credits = balance.tenant_credits ?? 0
   const isLow = credits <= 0
   const currentMonth = new Date().toISOString().slice(0, 7)
-  const isSubscriptionClient = String(selectedTenant?.tenant_is_subscription_client) === 'true'
-  const subPaidCurrentMonth = String(selectedTenant?.tenant_sub_paid_current_month) === 'true'
+  const subs = balance.subscriptions ?? []
+  const paidThisMonth = subs.some(s => s.reference_month === currentMonth && s.status === 'paid')
+  const isSubscriptionClient = subs.length > 0 || (selectedTenant?.tenant_subscription_fee ?? null) !== null
+  const isSubOverdue = isSubscriptionClient && !paidThisMonth
   const fee = selectedTenant?.tenant_subscription_fee
-    ?? balance.subscriptions?.find(s => s.reference_month === currentMonth && s.status === 'pending')?.amount
-    ?? null
-  const isSubOverdue = isSubscriptionClient && !subPaidCurrentMonth
+    ?? subs.find(s => s.reference_month === currentMonth)?.amount
+    ?? (subs.length > 0 ? subs[subs.length - 1].amount : null)
 
   return (
     <>
