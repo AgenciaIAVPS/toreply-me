@@ -38,9 +38,12 @@ export function CreditsBadge() {
       <div className="flex items-center gap-1">
         {isSubOverdue && (
           <button onClick={() => setShowSub(true)} className="focus:outline-none">
+            <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white cursor-pointer hover:opacity-90">
+              <CalendarClock size={11} />
+            </span>
             <Badge
               variant="outline"
-              className="gap-1 text-xs border-orange-500 text-orange-600 cursor-pointer hover:bg-orange-50"
+              className="gap-1 text-xs border-orange-500 text-orange-600 cursor-pointer hover:bg-orange-50 hidden min-[800px]:inline-flex"
             >
               <CalendarClock size={10} />
               Mensalidade em atraso
