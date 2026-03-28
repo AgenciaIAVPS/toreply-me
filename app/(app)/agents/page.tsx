@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Loader2, Bot } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Loader2, Bot, Eye } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -370,8 +370,8 @@ export default function AgentsPage() {
                       </>
                     )}
                     {(isAdmin || !canEdit) && !isMaster && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(agent)}>
-                        <Pencil size={13} />
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(agent)} title="Visualizar agente">
+                        <Eye size={13} />
                       </Button>
                     )}
                   </div>
@@ -394,7 +394,7 @@ export default function AgentsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[90vw] w-[min(1100px,90vw)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar Agente' : 'Novo Agente'}</DialogTitle>
+            <DialogTitle>{editing ? (canEdit ? 'Editar Agente' : 'Visualizar Agente') : 'Novo Agente'}</DialogTitle>
           </DialogHeader>
 
           {/* Read-only view for non-editors */}
