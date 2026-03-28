@@ -19,7 +19,7 @@ interface LedgerEntry {
 }
 
 interface BalanceData {
-  tenant_credits: number
+  balance: number
   total_deposited: number
   total_deducted: number
   ledger: LedgerEntry[]
@@ -34,9 +34,13 @@ export default function CreditsPage() {
   const load = () => {
     if (!selectedTenant) return
     setLoading(true)
-    // RF-013: sub-tenant passa rel_id para obter saldo isolado da relação pai-filho
-    const relParam = isSubTenant && selectedParent ? `?rel_id=${selectedParent.rel_id}` : ''
-    api.get<BalanceData>(`/credits/balance${relParam}`).then(setData).catch(() => toast.error('Erro ao carregar saldo')).finally(() => setLoading(false))
+    let balanceUrl: string
+    if (isSubTenant && selectedParent) {
+      balanceUrl = `/credits/balance?rel_id=${selectedParent.rel_id}`
+    } else {
+      balanceUrl = `/credits/balance?tenant_id=${selectedTenant.tenant_id}`
+    }
+    api.get<BalanceData>(balanceUrl).then(setData).catch(() => toast.error('Erro ao carregar saldo')).finally(() => setLoading(false))
   }
 
   useEffect(() => { if (selectedTenant) load() }, [selectedTenant, selectedParent, isSubTenant])
@@ -60,9 +64,9 @@ export default function CreditsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold font-mono">
-                  R$ {data?.tenant_credits.toFixed(2) ?? '0,00'}
+                  R$ {data?.balance.toFixed(2) ?? '0,00'}
                 </p>
-                {(data?.tenant_credits ?? 0) <= 0 && (
+                {(data?.balance ?? 0) <= 0 && (
                   <Badge variant="destructive" className="mt-1 text-xs">Sem créditos</Badge>
                 )}
               </CardContent>
