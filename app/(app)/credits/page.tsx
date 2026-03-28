@@ -11,11 +11,11 @@ import { AddCreditsModal } from '@/components/credits/AddCreditsModal'
 import { Zap, TrendingDown, TrendingUp, Plus } from 'lucide-react'
 
 interface LedgerEntry {
-  ledger_id: string
-  ledger_type: 'deposit' | 'deduction'
-  ledger_amount: number
-  ledger_description: string
-  ledger_date_creation: string
+  id: string
+  type: 'deposit' | 'deduction'
+  amount: number
+  description: string
+  date: string
 }
 
 interface BalanceData {
@@ -99,19 +99,19 @@ export default function CreditsPage() {
             <h2 className="text-lg font-semibold mb-3">Histórico</h2>
             <div className="space-y-2">
               {data?.ledger.map(entry => (
-                <div key={entry.ledger_id} className="flex items-center justify-between py-2 px-3 rounded-lg border">
+                <div key={entry.id} className="flex items-center justify-between py-2 px-3 rounded-lg border">
                   <div className="flex items-center gap-2">
-                    {entry.ledger_type === 'deposit'
+                    {entry.type === 'deposit'
                       ? <TrendingUp size={14} className="text-green-500" />
                       : <TrendingDown size={14} className="text-red-500" />}
-                    <span className="text-sm">{entry.ledger_description}</span>
+                    <span className="text-sm">{entry.description}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-sm font-mono font-medium ${entry.ledger_type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                      {entry.ledger_type === 'deposit' ? '+' : ''}R$ {Math.abs(entry.ledger_amount).toFixed(2)}
+                    <span className={`text-sm font-mono font-medium ${entry.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {entry.type === 'deposit' ? '+' : ''}R$ {Math.abs(entry.amount).toFixed(2)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(entry.ledger_date_creation).toLocaleDateString('pt-BR')}
+                      {new Date(entry.date).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                 </div>
