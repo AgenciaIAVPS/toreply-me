@@ -94,13 +94,13 @@ export default function SettingsPage() {
   }, [isMaster])
 
   const loadLocalDbs = useCallback(() => {
-    if (!selectedTenant || !canManageLocalDbs) return
+    if (!selectedTenant) return
     setLoadingDbs(true)
     api.get<{ local_dbs: LocalDb[] }>(`/localdb-list?tenant_id=${selectedTenant.tenant_id}`)
       .then(r => setLocalDbs(r.local_dbs || []))
       .catch(() => toast.error('Erro ao carregar bancos locais'))
       .finally(() => setLoadingDbs(false))
-  }, [selectedTenant, canManageLocalDbs])
+  }, [selectedTenant])
 
   useEffect(() => { loadLocalDbs() }, [loadLocalDbs])
 
@@ -239,7 +239,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
           <TabsTrigger value="conta">Conta</TabsTrigger>
-          {canManageLocalDbs && <TabsTrigger value="localdb">Bancos Locais</TabsTrigger>}
+          {!!selectedTenant && <TabsTrigger value="localdb">Bancos Locais</TabsTrigger>}
           {isMaster && <TabsTrigger value="master">Sistema</TabsTrigger>}
         </TabsList>
 
@@ -356,7 +356,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {canManageLocalDbs && (
+        {!!selectedTenant && (
           <TabsContent value="localdb" className="mt-4">
             <Card>
               <CardHeader>
@@ -365,10 +365,12 @@ export default function SettingsPage() {
                     <CardTitle>Bancos de Dados Locais</CardTitle>
                     <CardDescription className="mt-1">Conexões de banco registradas para o UnaragConsole.</CardDescription>
                   </div>
-                  <Button size="sm" onClick={openCreateDb}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar
-                  </Button>
+                  {canManageLocalDbs && (
+                    <Button size="sm" onClick={openCreateDb}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -386,8 +388,8 @@ export default function SettingsPage() {
                     {localDbs.map(db => (
                       <div
                         key={db.ldb_id}
-                        className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/40 cursor-pointer"
-                        onClick={() => openEditDb(db)}
+                        className={`flex items-center justify-between p-3 rounded-md border ${canManageLocalDbs ? 'hover:bg-muted/40 cursor-pointer' : ''}`}
+                        onClick={() => canManageLocalDbs && openEditDb(db)}
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{db.ldb_name}</p>
@@ -399,17 +401,19 @@ export default function SettingsPage() {
                           <Badge variant={db.ldb_is_active ? 'default' : 'secondary'} className="text-xs">
                             {db.ldb_is_active ? 'Ativo' : 'Inativo'}
                           </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            disabled={deletingDb === db.ldb_id}
-                            onClick={e => { e.stopPropagation(); deleteDb(db.ldb_id) }}
-                          >
-                            {deletingDb === db.ldb_id
-                              ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : <Trash2 className="h-3 w-3" />}
-                          </Button>
+                          {canManageLocalDbs && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              disabled={deletingDb === db.ldb_id}
+                              onClick={e => { e.stopPropagation(); deleteDb(db.ldb_id) }}
+                            >
+                              {deletingDb === db.ldb_id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}

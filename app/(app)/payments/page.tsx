@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/contexts/TenantContext'
 import { api } from '@/lib/api'
 import { CreditBalance } from '@/lib/types'
@@ -19,15 +20,19 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 export default function PaymentsPage() {
+  const { user } = useAuth()
   const { selectedTenant, selectedParent, isSubTenant, parentResolved } = useTenant()
   const router = useRouter()
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
+  const isMasterAdmin = !!user?.user_is_master_admin
+  const canViewPayments = isAdmin || isAgentsAdmin || isMasterAdmin
 
   const [data, setData] = useState<CreditBalance | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isAdmin) { router.push('/dashboard'); return }
+    if (!canViewPayments) { router.push('/dashboard'); return }
     if (!selectedTenant || !parentResolved) return
 
     let balanceUrl: string
@@ -42,9 +47,9 @@ export default function PaymentsPage() {
       .then(r => setData(r))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [selectedTenant, parentResolved, isAdmin])
+  }, [selectedTenant, parentResolved, canViewPayments])
 
-  if (!isAdmin) return null
+  if (!canViewPayments) return null
 
   if (loading) {
     return (

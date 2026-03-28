@@ -32,8 +32,10 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState('users')
 
   const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isAgentsAdmin = selectedTenant?.tenant_user_role === 'agents_admin'
   const isMasterAdmin = !!user?.user_is_master_admin
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
+  const canManageUsers = isAdmin || isAgentsAdmin || isMasterAdmin
 
   // Master users state
   const [masters, setMasters] = useState<MasterUser[]>([])
@@ -109,7 +111,7 @@ export default function UsersPage() {
             <TabsTrigger value="users">Usuários</TabsTrigger>
             {isMaster && <TabsTrigger value="master">Usuários Master</TabsTrigger>}
           </TabsList>
-          {activeTab === 'users' && isAdmin && (
+          {activeTab === 'users' && canManageUsers && (
             <Button onClick={generateInvite} size="sm">
               <UserPlus className="mr-2 h-4 w-4" />Convidar usuário
             </Button>
@@ -145,19 +147,19 @@ export default function UsersPage() {
                         <Badge variant={u.tenant_user_role === 'admin' ? 'default' : u.tenant_user_role === 'agents_admin' ? 'outline' : 'secondary'} className="text-xs">
                           {u.tenant_user_role === 'admin' ? 'Admin' : u.tenant_user_role === 'agents_admin' ? 'Agents Admin' : 'Normal'}
                         </Badge>
-                        {isAdmin && u.user_id !== user?.user_id && (
+                        {canManageUsers && u.user_id !== user?.user_id && (
                           <Select value={u.tenant_user_role} onValueChange={v => changeRole(u.user_id, v)}>
                             <SelectTrigger className="w-[110px] h-6 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              {(isAdmin || isMasterAdmin) && <SelectItem value="admin">Admin</SelectItem>}
                               {isMasterAdmin && <SelectItem value="agents_admin">Agents Admin</SelectItem>}
                               <SelectItem value="normal">Normal</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
-                        {isAdmin && u.user_id !== user?.user_id && (
+                        {canManageUsers && u.user_id !== user?.user_id && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">

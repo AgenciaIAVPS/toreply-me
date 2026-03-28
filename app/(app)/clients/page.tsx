@@ -49,6 +49,10 @@ export default function ClientsPage() {
   const { selectedTenant } = useTenant()
   const isMaster = user?.user_is_master_admin && selectedTenant?.tenant_is_master
   const isParent = selectedTenant?.tenant_is_parent
+  const isAdmin = selectedTenant?.tenant_user_role === 'admin'
+  const isMasterAdmin = !!user?.user_is_master_admin
+  const isNormal = selectedTenant?.tenant_user_role === 'normal'
+  const canManageClients = isAdmin || isMasterAdmin
 
   const [clients, setClients] = useState<RelChildSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -440,16 +444,18 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-sm text-muted-foreground">Sub-tenants vinculados a esta conta.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={() => { setCreateName(''); setCreateDesc(''); setCreateSlug(''); setCreateSlugError(''); setDialogMode('create') }} size="sm" variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            Cadastrar cliente
-          </Button>
-          <Button onClick={generateClientInvite} disabled={clientInviteLoading} size="sm">
-            <UserPlus className="mr-2 h-4 w-4" />
-            {clientInviteLoading ? 'Gerando...' : 'Convidar por link'}
-          </Button>
-        </div>
+        {canManageClients && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button onClick={() => { setCreateName(''); setCreateDesc(''); setCreateSlug(''); setCreateSlugError(''); setDialogMode('create') }} size="sm" variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              Cadastrar cliente
+            </Button>
+            <Button onClick={generateClientInvite} disabled={clientInviteLoading} size="sm">
+              <UserPlus className="mr-2 h-4 w-4" />
+              {clientInviteLoading ? 'Gerando...' : 'Convidar por link'}
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -488,10 +494,12 @@ export default function ClientsPage() {
                         {child.rel_is_blocked && <span className="ml-2 text-xs text-destructive font-normal">(bloqueado)</span>}
                       </CardTitle>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant={child.credits_status === 'positive' ? 'secondary' : 'destructive'} className="text-xs">
-                          R$ {child.rel_credits.toFixed(2)}
-                        </Badge>
-                        {child.subscription_status !== 'none' && (
+                        {!isNormal && (
+                          <Badge variant={child.credits_status === 'positive' ? 'secondary' : 'destructive'} className="text-xs">
+                            R$ {child.rel_credits.toFixed(2)}
+                          </Badge>
+                        )}
+                        {!isNormal && child.subscription_status !== 'none' && (
                           <Badge variant={child.subscription_status === 'paid' ? 'outline' : 'destructive'} className="text-xs">
                             {child.subscription_status === 'paid' ? 'mensalidade em dia' : 'mensalidade atrasada'}
                           </Badge>
@@ -504,35 +512,37 @@ export default function ClientsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap max-[799px]:w-full">
-                    <Button variant="ghost" size="icon" title="Editar" onClick={() => openDialog(child, 'edit')}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Créditos" onClick={() => openDialog(child, 'credits')}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Taxas" onClick={() => openDialog(child, 'fees')}>
-                      <CreditCard className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Mensalidade" onClick={() => openDialog(child, 'subscription')}>
-                      <Receipt className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title={child.rel_is_blocked ? 'Desbloquear' : 'Bloquear'} onClick={() => toggleBlock(child)}>
-                      {child.rel_is_blocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Contatos" onClick={() => openDialog(child, 'whatsapp')}>
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Convidar usuário" onClick={() => generateChildUserInvite(child)}>
-                      <Link2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Bancos de dados locais" onClick={() => openDialog(child, 'localdb')}>
-                      <Database className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" title="Desvincular" onClick={() => openDialog(child, 'unlink')}>
-                      <Unlink2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  {canManageClients && (
+                    <div className="flex items-center gap-1.5 flex-wrap max-[799px]:w-full">
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => openDialog(child, 'edit')}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Créditos" onClick={() => openDialog(child, 'credits')}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Taxas" onClick={() => openDialog(child, 'fees')}>
+                        <CreditCard className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Mensalidade" onClick={() => openDialog(child, 'subscription')}>
+                        <Receipt className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title={child.rel_is_blocked ? 'Desbloquear' : 'Bloquear'} onClick={() => toggleBlock(child)}>
+                        {child.rel_is_blocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Contatos" onClick={() => openDialog(child, 'whatsapp')}>
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Convidar usuário" onClick={() => generateChildUserInvite(child)}>
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Bancos de dados locais" onClick={() => openDialog(child, 'localdb')}>
+                        <Database className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Desvincular" onClick={() => openDialog(child, 'unlink')}>
+                        <Unlink2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
             </Card>

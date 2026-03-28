@@ -11,7 +11,7 @@ import { SubscriptionPaymentModal } from '@/components/credits/SubscriptionPayme
 import { CreditBalance } from '@/lib/types'
 
 export function CreditsBadge() {
-  const { selectedTenant } = useTenant()
+  const { selectedTenant, isSubTenant, selectedParent } = useTenant()
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [showSub, setShowSub] = useState(false)
@@ -19,10 +19,13 @@ export function CreditsBadge() {
   useEffect(() => {
     if (!selectedTenant) return
     setBalance(null)
-    api.get<CreditBalance>(`/credits/balance?tenant_id=${selectedTenant.tenant_id}`)
+    const balanceUrl = isSubTenant && selectedParent
+      ? `/credits/balance?rel_id=${selectedParent.rel_id}`
+      : `/credits/balance?tenant_id=${selectedTenant.tenant_id}`
+    api.get<CreditBalance>(balanceUrl)
       .then(r => setBalance(r))
       .catch(() => {})
-  }, [selectedTenant])
+  }, [selectedTenant, isSubTenant, selectedParent])
 
   if (balance === null) return null
 
@@ -41,52 +44,81 @@ export function CreditsBadge() {
     <>
       <div className="flex items-center gap-1">
         {isSubOverdue && (
-          <button onClick={() => setShowSub(true)} className="focus:outline-none">
-            <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white cursor-pointer hover:opacity-90">
-              <CalendarClock size={11} />
+          isSubTenant ? (
+            <span className="focus:outline-none">
+              <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white">
+                <CalendarClock size={11} />
+              </span>
+              <Badge
+                variant="outline"
+                className="gap-1 text-xs border-orange-500 text-orange-600 hidden min-[800px]:inline-flex"
+              >
+                <CalendarClock size={10} />
+                Mensalidade em atraso
+              </Badge>
             </span>
-            <Badge
-              variant="outline"
-              className="gap-1 text-xs border-orange-500 text-orange-600 cursor-pointer hover:bg-orange-50 hidden min-[800px]:inline-flex"
-            >
-              <CalendarClock size={10} />
-              Mensalidade em atraso
-            </Badge>
-          </button>
+          ) : (
+            <button onClick={() => setShowSub(true)} className="focus:outline-none">
+              <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white cursor-pointer hover:opacity-90">
+                <CalendarClock size={11} />
+              </span>
+              <Badge
+                variant="outline"
+                className="gap-1 text-xs border-orange-500 text-orange-600 cursor-pointer hover:bg-orange-50 hidden min-[800px]:inline-flex"
+              >
+                <CalendarClock size={10} />
+                Mensalidade em atraso
+              </Badge>
+            </button>
+          )
         )}
         {isLow ? (
-          <button onClick={() => setShowAdd(true)} className="focus:outline-none">
-            <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground cursor-pointer hover:opacity-90">
-              <AlertTriangle size={11} />
+          isSubTenant ? (
+            <span className="focus:outline-none">
+              <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+                <AlertTriangle size={11} />
+              </span>
+              <Badge variant="destructive" className="gap-1 text-xs hidden min-[800px]:inline-flex">
+                <AlertTriangle size={10} />
+                Sem créditos
+              </Badge>
             </span>
-            <Badge variant="destructive" className="gap-1 text-xs cursor-pointer hover:opacity-90 hidden min-[800px]:inline-flex">
-              <AlertTriangle size={10} />
-              Sem créditos
-            </Badge>
-          </button>
+          ) : (
+            <button onClick={() => setShowAdd(true)} className="focus:outline-none">
+              <span className="min-[800px]:hidden flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground cursor-pointer hover:opacity-90">
+                <AlertTriangle size={11} />
+              </span>
+              <Badge variant="destructive" className="gap-1 text-xs cursor-pointer hover:opacity-90 hidden min-[800px]:inline-flex">
+                <AlertTriangle size={10} />
+                Sem créditos
+              </Badge>
+            </button>
+          )
         ) : (
           <Badge variant="secondary" className="text-xs font-mono">
             R$ {credits.toFixed(2)}
           </Badge>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => setShowAdd(true)}
-          title="Adicionar créditos"
-        >
-          <Plus size={12} />
-        </Button>
+        {!isSubTenant && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setShowAdd(true)}
+            title="Adicionar créditos"
+          >
+            <Plus size={12} />
+          </Button>
+        )}
       </div>
-      {showAdd && (
+      {!isSubTenant && showAdd && (
         <AddCreditsModal
           onClose={() => setShowAdd(false)}
           onSuccess={c => setBalance(b => b ? { ...b, tenant_credits: c } : b)}
           tenantId={selectedTenant?.tenant_id}
         />
       )}
-      {showSub && fee !== null && (
+      {!isSubTenant && showSub && fee !== null && (
         <SubscriptionPaymentModal
           onClose={() => setShowSub(false)}
           currentMonth={currentMonth}

@@ -34,13 +34,13 @@ export function TopMenu() {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', show: true },
-    { href: '/users', label: 'Usuários', show: !!selectedTenant && (!isSubTenant || !!isAdmin) },
-    { href: '/clients', label: 'Clientes', show: !!(isAdmin || isAgentsAdmin) && !isSubTenant && !!(isParent || isMaster) },
+    { href: '/users', label: 'Usuários', show: !!selectedTenant },
+    { href: '/clients', label: 'Clientes', show: !!selectedTenant && !isSubTenant && !!(isParent || isMaster) },
     { href: '/agents', label: 'Agentes', show: !!selectedTenant },
-    { href: '/instances', label: 'Números', show: !!selectedTenant && (!!isAdmin || !!isMasterAdmin) },
+    { href: '/instances', label: 'Números', show: !!selectedTenant },
     { href: '/conversations', label: 'Conversas', show: !!selectedTenant },
     { href: '/contacts', label: 'Contatos', show: !!selectedTenant },
-    { href: '/payments', label: 'Pagamentos', show: !!isAdmin },
+    { href: '/payments', label: 'Pagamentos', show: !!(isAdmin || isAgentsAdmin || isMasterAdmin) },
     { href: '/tenants', label: 'Tenants', show: !!isMaster },
     { href: '/settings', label: 'Configurações', show: !!selectedTenant },
   ]
@@ -77,7 +77,7 @@ export function TopMenu() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {isAdmin && <CreditsBadge />}
+            {(isAdmin || isAgentsAdmin || isMasterAdmin) && <CreditsBadge />}
             {isSubTenant && (selectedTenant?.tenant_parents?.length ?? 0) > 1 && (
               <button
                 onClick={() => {
