@@ -83,6 +83,7 @@ export function CreditsBadge() {
         <AddCreditsModal
           onClose={() => setShowAdd(false)}
           onSuccess={c => setBalance(b => b ? { ...b, tenant_credits: c } : b)}
+          tenantId={selectedTenant?.tenant_id}
         />
       )}
       {showSub && fee !== null && (
